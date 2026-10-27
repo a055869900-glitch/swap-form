@@ -90,6 +90,7 @@ const UI = {
     endBefore: '結束時間要晚於開始時間', need: '請填寫這一項',
     sugT: '📅 建議改成這幾天（還有名額）', pickT: '🔁 選擇要對調的同事', unswap: '不對調了，回到一般申請',
     forceHint: '選「仍要送出」會交給主管決定是否特准。',
+    whyQ: '仍要送出的理由（必填，主管會看到）', whyPh: '例如：家裡有事、已和同事商量好',
     blocked: '⚠ 剛剛名額被用掉了，請看最新的檢查結果。',
     doneT: '已送出', net: '網路連線失敗，請再按一次。', auth: '身分驗證失敗，請關閉後從 LINE 重新開啟。',
     expired: '頁面停留太久，資料已過期，請重新填寫。', setup: '表單尚未設定完成（API_URL），請聯絡副廠長。',
@@ -104,6 +105,7 @@ const UI = {
     endBefore: 'Waktu selesai harus setelah waktu mulai', need: 'Mohon isi bagian ini',
     sugT: '📅 Saran tanggal (masih ada kuota)', pickT: '🔁 Pilih rekan untuk bertukar', unswap: 'Batal tukar, kembali ke pengajuan biasa',
     forceHint: 'Jika memilih "Tetap kirim", atasan yang akan memutuskan.',
+    whyQ: 'Alasan tetap kirim (wajib, akan dilihat atasan)', whyPh: 'Contoh: urusan keluarga, sudah bicara dengan rekan',
     blocked: '⚠ Kuota baru saja terpakai, lihat hasil cek terbaru.',
     doneT: 'Terkirim', net: 'Koneksi gagal, silakan tekan lagi.', auth: 'Verifikasi gagal. Tutup dan buka lagi dari LINE.',
     expired: 'Halaman terlalu lama dibuka, silakan isi ulang.', setup: 'Formulir belum siap (API_URL). Hubungi Wakil Kepala Pabrik.',
@@ -118,6 +120,7 @@ const UI = {
     endBefore: 'Giờ kết thúc phải sau giờ bắt đầu', need: 'Vui lòng điền mục này',
     sugT: '📅 Gợi ý ngày (còn chỗ)', pickT: '🔁 Chọn đồng nghiệp để đổi', unswap: 'Không đổi nữa, quay lại đơn thường',
     forceHint: 'Chọn "Vẫn gửi" thì quản lý sẽ quyết định.',
+    whyQ: 'Lý do vẫn gửi (bắt buộc, quản lý sẽ thấy)', whyPh: 'Ví dụ: việc gia đình, đã bàn với đồng nghiệp',
     blocked: '⚠ Vừa hết chỗ, hãy xem kết quả kiểm tra mới nhất.',
     doneT: 'Đã gửi', net: 'Lỗi kết nối, vui lòng bấm lại.', auth: 'Xác thực thất bại. Hãy đóng và mở lại từ LINE.',
     expired: 'Trang mở quá lâu, vui lòng điền lại.', setup: 'Biểu mẫu chưa cài đặt xong (API_URL). Liên hệ Phó Giám đốc nhà máy.',
@@ -294,7 +297,8 @@ function renderConfirm(v, banner) {
   }
   if (v.canSwapW) h += '<button class="btn primary" id="swapwBtn">' + esc(INFO.txt.btn_swapw) + '</button><div id="cands"></div>';
   if (v.exchange) h += '<button class="btn ghost" id="unswapBtn">' + esc(u('unswap')) + '</button>';
-  if (v.canForce) h += '<button class="btn warn" id="forceBtn">' + esc(INFO.txt.btn_force) + '</button><div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(u('forceHint')) + '</div>';
+  if (v.canForce) h += '<div class="card" style="margin-top:12px"><h2>' + esc(u('whyQ')) + '</h2><textarea id="whyText" maxlength="200" placeholder="' + esc(u('whyPh')) + '"></textarea><div class="err" id="whyErr"></div>' +
+    '<button class="btn warn" id="forceBtn">' + esc(INFO.txt.btn_force) + '</button><div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(u('forceHint')) + '</div></div>';
   h += '<button class="btn ghost" id="editBtn">' + esc(u('edit')) + '</button>';
   $('#app').innerHTML = h;
   window.scrollTo(0, 0);
@@ -333,11 +337,17 @@ async function loadCands() {
   } catch (e) { fail(e); } finally { busy(''); }
 }
 async function doSubmit(force) {
+  const why = force && $('#whyText') ? $('#whyText').value.trim() : '';
+  if (force && !why) { $('#whyErr').textContent = u('need'); $('#whyText').focus(); return; }
   document.querySelectorAll('.btn').forEach((b) => b.disabled = true);
   busy(u('submitting'));
   try {
-    const r = await api('submit', { force });
-    if (!r.ok) { document.querySelectorAll('.btn').forEach((b) => b.disabled = false); return fail(r); }
+    const r = await api('submit', { force, why });
+    if (!r.ok) {
+      document.querySelectorAll('.btn').forEach((b) => b.disabled = false);
+      if (r.code === 'invalid' && $('#whyErr')) { $('#whyErr').textContent = r.msg; return; }
+      return fail(r);
+    }
     if (r.stage === 'confirm') return renderConfirm(r, u('blocked'));
     renderDone(r.msg);
   } catch (e) { document.querySelectorAll('.btn').forEach((b) => b.disabled = false); fail(e); } finally { busy(''); }
