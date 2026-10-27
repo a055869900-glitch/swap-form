@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>換(改)假／新增假</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --bg: #f3f5f8; --card: #fff; --ink: #1f2933; --muted: #6b7785; --line: #e1e6ec;
+    --blue: #2e86de; --blue-soft: #e8f2fc; --green: #27ae60; --orange: #e67e22; --red: #c0392b; --red-soft: #fdecea;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font: 16px/1.5 -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", Roboto, sans-serif; padding-bottom: env(safe-area-inset-bottom); }
+  header { background: var(--blue); color: #fff; padding: 14px 16px 12px; position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .who { font-size: 13px; opacity: .9; margin-top: 2px; }
+  .langs { position: absolute; right: 12px; top: 12px; display: flex; gap: 4px; }
+  .langs button { background: rgba(255,255,255,.18); color: #fff; border: 0; border-radius: 6px; font-size: 12px; padding: 4px 7px; }
+  .langs button.on { background: #fff; color: var(--blue); font-weight: 700; }
+  main { max-width: 560px; margin: 0 auto; padding: 12px 16px 24px; }
+  .card { background: var(--card); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .card h2 { font-size: 15px; margin: 0 0 10px; }
+  .note { font-size: 13px; color: var(--muted); white-space: pre-line; background: #fff8e6; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  .kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kind { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 14px 8px; text-align: center; font-size: 16px; font-weight: 700; color: var(--ink); }
+  .kind small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .kind.on { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
+  .sec-title { font-weight: 700; font-size: 14px; margin: 0 0 8px; }
+  .sec-title.old { color: var(--orange); } .sec-title.new { color: var(--green); }
+  .row { display: grid; grid-template-columns: 44px 1fr 124px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .row label { font-size: 14px; color: var(--muted); }
+  input[type=date], input[type=time], textarea { width: 100%; font: inherit; font-size: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); min-height: 44px; }
+  textarea { min-height: 70px; resize: vertical; }
+  .wd { grid-column: 2 / 4; font-size: 12px; color: var(--muted); margin-top: -6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 15px; color: var(--ink); min-height: 40px; }
+  .chip.on { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .err { color: var(--red); font-size: 13px; margin-top: 6px; white-space: pre-line; }
+  .bad { outline: 2px solid var(--red); }
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px; font-size: 17px; font-weight: 700; margin-top: 10px; min-height: 50px; }
+  .btn.primary { background: var(--blue); color: #fff; }
+  .btn.ok { background: var(--green); color: #fff; }
+  .btn.warn { background: #fff; color: var(--red); border: 2px solid var(--red); }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); font-weight: 400; }
+  .btn:disabled { opacity: .5; }
+  .sum h3 { font-size: 14px; margin: 12px 0 6px; } .sum h3:first-child { margin-top: 0; }
+  .kv { display: grid; grid-template-columns: 38% 1fr; gap: 6px; font-size: 15px; padding: 3px 0; }
+  .kv span:first-child { color: var(--muted); } .kv span:last-child { font-weight: 700; word-break: break-word; }
+  .lines div { font-size: 14px; padding: 6px 0; border-top: 1px dashed var(--line); white-space: pre-line; }
+  .lines div:first-child { border-top: 0; }
+  .banner { background: var(--red-soft); color: var(--red); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; white-space: pre-line; }
+  .done { text-align: center; padding: 20px 10px; }
+  .done .big { font-size: 48px; }
+  .done pre { text-align: left; white-space: pre-wrap; font: inherit; font-size: 15px; background: var(--bg); border-radius: 10px; padding: 12px; }
+  .center { text-align: center; color: var(--muted); padding: 40px 10px; white-space: pre-line; }
+  .spin { width: 34px; height: 34px; border: 4px solid var(--blue-soft); border-top-color: var(--blue); border-radius: 50%; margin: 0 auto 12px; animation: r 0.9s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  .overlay { position: fixed; inset: 0; background: rgba(255,255,255,.75); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 20; font-size: 15px; color: var(--muted); }
+  .overlay.show { display: flex; }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="hTitle">換(改)假／新增假</h1>
+  <div class="who" id="hWho">&nbsp;</div>
+  <div class="langs" id="langs">
+    <button data-l="zh">中</button><button data-l="id">ID</button><button data-l="vi">VI</button>
+  </div>
+</header>
+<main id="app"><div class="center"><div class="spin"></div><span id="bootMsg">讀取中…</span></div></main>
+<div class="overlay" id="overlay"><div class="spin"></div><div id="overlayMsg"></div></div>
+
+<script>
+/* ===== 設定：只要改這兩行 ===== */
+const LIFF_ID = '2012224367-Zfm8Nat5';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxQQ9-pMf-O6zdoH6fDpdlTciYtI7LUm_SZgun81f5F69XkKpfMNzp1mXmhbVAq0R9Z/exec';
+/* ============================== */
+
+const UI = {
+  zh: {
+    title: '換(改)假／新增假', loading: '讀取中…', checking: '檢查排休中…', submitting: '送出中…',
+    kindQ: '要辦理哪一種？', kindSwapHint: '把原本的休假改到別天', kindAddHint: '多請一段假',
+    oldT: '🔄 原本的休假', newT: '🆕 改成的休假', addT: '➕ 新增的假', from: '從', to: '到',
+    typeQ: '假別', reasonQ: '事由', reasonPh: '請輸入事由',
+    next: '下一步：檢查排休', edit: '✏️ 修改內容', close: '關閉', retry: '重新整理',
+    endBefore: '結束時間要晚於開始時間', need: '請填寫這一項',
+    sugT: '📅 建議改成這幾天（還有名額）', pickT: '🔁 選擇要對調的同事', unswap: '不對調了，回到一般申請',
+    forceHint: '選「仍要送出」會交給主管決定是否特准。',
+    blocked: '⚠ 剛剛名額被用掉了，請看最新的檢查結果。',
+    doneT: '已送出', net: '網路連線失敗，請再按一次。', auth: '身分驗證失敗，請關閉後從 LINE 重新開啟。',
+    expired: '頁面停留太久，資料已過期，請重新填寫。', setup: '表單尚未設定完成（API_URL），請聯絡副廠長。',
+    wd: ['日','一','二','三','四','五','六'],
+  },
+  id: {
+    title: 'Tukar/Tambah Libur', loading: 'Memuat…', checking: 'Mengecek jadwal…', submitting: 'Mengirim…',
+    kindQ: 'Mau mengajukan apa?', kindSwapHint: 'Pindahkan libur lama ke hari lain', kindAddHint: 'Ambil cuti tambahan',
+    oldT: '🔄 Libur yang lama', newT: '🆕 Libur yang baru', addT: '➕ Cuti tambahan', from: 'Mulai', to: 'Sampai',
+    typeQ: 'Jenis cuti', reasonQ: 'Alasan', reasonPh: 'Ketik alasan',
+    next: 'Lanjut: cek jadwal', edit: '✏️ Ubah isian', close: 'Tutup', retry: 'Muat ulang',
+    endBefore: 'Waktu selesai harus setelah waktu mulai', need: 'Mohon isi bagian ini',
+    sugT: '📅 Saran tanggal (masih ada kuota)', pickT: '🔁 Pilih rekan untuk bertukar', unswap: 'Batal tukar, kembali ke pengajuan biasa',
+    forceHint: 'Jika memilih "Tetap kirim", atasan yang akan memutuskan.',
+    blocked: '⚠ Kuota baru saja terpakai, lihat hasil cek terbaru.',
+    doneT: 'Terkirim', net: 'Koneksi gagal, silakan tekan lagi.', auth: 'Verifikasi gagal. Tutup dan buka lagi dari LINE.',
+    expired: 'Halaman terlalu lama dibuka, silakan isi ulang.', setup: 'Formulir belum siap (API_URL). Hubungi Wakil Kepala Pabrik.',
+    wd: ['Min','Sen','Sel','Rab','Kam','Jum','Sab'],
+  },
+  vi: {
+    title: 'Đổi/Thêm ngày nghỉ', loading: 'Đang tải…', checking: 'Đang kiểm tra lịch…', submitting: 'Đang gửi…',
+    kindQ: 'Bạn muốn làm gì?', kindSwapHint: 'Chuyển ngày nghỉ cũ sang ngày khác', kindAddHint: 'Xin nghỉ thêm',
+    oldT: '🔄 Ngày nghỉ cũ', newT: '🆕 Ngày nghỉ mới', addT: '➕ Ngày nghỉ thêm', from: 'Từ', to: 'Đến',
+    typeQ: 'Loại nghỉ', reasonQ: 'Lý do', reasonPh: 'Nhập lý do',
+    next: 'Tiếp: kiểm tra lịch', edit: '✏️ Sửa nội dung', close: 'Đóng', retry: 'Tải lại',
+    endBefore: 'Giờ kết thúc phải sau giờ bắt đầu', need: 'Vui lòng điền mục này',
+    sugT: '📅 Gợi ý ngày (còn chỗ)', pickT: '🔁 Chọn đồng nghiệp để đổi', unswap: 'Không đổi nữa, quay lại đơn thường',
+    forceHint: 'Chọn "Vẫn gửi" thì quản lý sẽ quyết định.',
+    blocked: '⚠ Vừa hết chỗ, hãy xem kết quả kiểm tra mới nhất.',
+    doneT: 'Đã gửi', net: 'Lỗi kết nối, vui lòng bấm lại.', auth: 'Xác thực thất bại. Hãy đóng và mở lại từ LINE.',
+    expired: 'Trang mở quá lâu, vui lòng điền lại.', setup: 'Biểu mẫu chưa cài đặt xong (API_URL). Liên hệ Phó Giám đốc nhà máy.',
+    wd: ['CN','T2','T3','T4','T5','T6','T7'],
+  },
+};
+const DEF_START = '08:00', DEF_END = '17:00';
+let lang = 'zh', INFO = null, VIEW = null;
+const form = { kind: '', oldSD: '', oldST: DEF_START, oldED: '', oldET: DEF_END, newSD: '', newST: DEF_START, newED: '', newET: DEF_END, type: '', reason: '', own: false };
+const $ = (s) => document.querySelector(s);
+const u = (k) => (UI[lang] && UI[lang][k]) || UI.zh[k];
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function busy(msg) { $('#overlayMsg').textContent = msg || ''; $('#overlay').classList.toggle('show', !!msg); }
+function center(msg, btn) {
+  $('#app').innerHTML = '<div class="center">' + esc(msg) + (btn ? '<button class="btn ghost" id="cBtn">' + esc(btn.t) + '</button>' : '') + '</div>';
+  if (btn) $('#cBtn').onclick = btn.f;
+}
+function header() {
+  $('#hTitle').textContent = u('title');
+  $('#hWho').textContent = INFO ? INFO.name + '（' + INFO.group + '）' : ' ';
+  document.querySelectorAll('#langs button').forEach((b) => b.classList.toggle('on', b.dataset.l === lang));
+  document.title = u('title');
+}
+
+async function api(action, extra) {
+  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) throw Object.assign(new Error('setup'), { code: 'setup' });
+  const body = Object.assign({ liff: 1, action, lang, idToken: liff.getIDToken() }, extra || {});
+  let res;
+  try {
+    res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  } catch (e) { throw Object.assign(new Error('net'), { code: 'net' }); }
+  if (!res.ok) throw Object.assign(new Error('net'), { code: 'net' });
+  return res.json();
+}
+function fail(r) {
+  const code = (r && r.code) || 'error';
+  if (code === 'auth') return center(u('auth'), { t: u('close'), f: closeWin });
+  if (code === 'setup') return center(u('setup'));
+  if (code === 'expired') { alert(u('expired')); return renderForm(); }
+  if (code === 'net') return alert(u('net'));
+  if (code === 'unbound' || code === 'notallowed') return center(r.msg, { t: u('close'), f: closeWin });
+  alert((r && r.msg) || u('net'));
+}
+function closeWin() { try { if (liff.isInClient()) return liff.closeWindow(); } catch (e) {} window.close(); }
+
+/* ===== 啟動 ===== */
+async function boot() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    await loadInfo();
+  } catch (e) {
+    center(u('auth') + '\n\n' + (e && e.message ? e.message : ''), { t: u('retry'), f: () => location.reload() });
+  }
+}
+async function loadInfo(newLang) {
+  busy(u('loading'));
+  try {
+    const r = await api('init', newLang ? { lang: newLang } : {});
+    if (!r.ok) return fail(r);
+    INFO = r; lang = r.lang; header();
+    if (VIEW) renderConfirm(VIEW); else renderForm();
+  } catch (e) { fail(e); } finally { busy(''); }
+}
+document.querySelectorAll('#langs button').forEach((b) => b.onclick = () => {
+  if (b.dataset.l === lang) return;
+  lang = b.dataset.l; header();
+  if (!INFO) return;
+  VIEW = null; // 換語言後回到填寫畫面，內容保留
+  loadInfo(lang);
+});
+
+/* ===== 填寫畫面 ===== */
+function wdText(d) { if (!d) return ''; const x = new Date(d + 'T00:00:00'); return isNaN(x) ? '' : '（' + u('wd')[x.getDay()] + '）'; }
+function dtRow(prefix, key, label) {
+  const d = form[prefix + key + 'D'], t = form[prefix + key + 'T'];
+  return '<div class="row"><label>' + esc(label) + '</label>' +
+    '<input type="date" data-k="' + prefix + key + 'D" min="' + INFO.minDate + '" value="' + esc(d) + '">' +
+    '<input type="time" data-k="' + prefix + key + 'T" value="' + esc(t) + '">' +
+    '<div class="wd" id="wd_' + prefix + key + '">' + wdText(d) + '</div></div>';
+}
+function renderForm(errs) {
+  VIEW = null; errs = errs || {};
+  const isAdd = form.kind === '新增假';
+  const k = INFO.kinds;
+  let h = '<div class="note">' + esc(INFO.txt.note_swap) + '</div>';
+  h += '<div class="card"><h2>' + esc(u('kindQ')) + '</h2><div class="kinds">' +
+    '<button class="kind' + (form.kind === k[0].v ? ' on' : '') + '" data-kind="' + esc(k[0].v) + '">🔄 ' + esc(k[0].t) + '<small>' + esc(u('kindSwapHint')) + '</small></button>' +
+    '<button class="kind' + (form.kind === k[1].v ? ' on' : '') + '" data-kind="' + esc(k[1].v) + '">➕ ' + esc(k[1].t) + '<small>' + esc(u('kindAddHint')) + '</small></button>' +
+    '</div>' + (errs['類型'] ? '<div class="err">' + esc(errs['類型']) + '</div>' : '') + '</div>';
+  if (form.kind) {
+    if (!isAdd) {
+      h += '<div class="card"><div class="sec-title old">' + esc(u('oldT')) + '</div>' + dtRow('old', 'S', u('from')) + dtRow('old', 'E', u('to')) +
+        errLine(errs, ['異動前起', '異動前迄']) + '</div>';
+    }
+    h += '<div class="card"><div class="sec-title new">' + esc(isAdd ? u('addT') : u('newT')) + '</div>' + dtRow('new', 'S', u('from')) + dtRow('new', 'E', u('to')) +
+      errLine(errs, ['異動後起', '異動後迄']) + '</div>';
+    if (isAdd) {
+      h += '<div class="card"><h2>' + esc(INFO.labels['假別'] || u('typeQ')) + '</h2><div class="chips">' +
+        INFO.leaveTypes.map((o) => '<button class="chip' + (form.type === o.v ? ' on' : '') + '" data-type="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') +
+        '</div>' + errLine(errs, ['假別']) + '</div>';
+    }
+    const reasonIsOpt = INFO.reasons.some((o) => o.v === form.reason) && !form.own;
+    h += '<div class="card"><h2>' + esc(INFO.labels['事由'] || u('reasonQ')) + '</h2><div class="chips">' +
+      INFO.reasons.map((o) => '<button class="chip' + (reasonIsOpt && form.reason === o.v ? ' on' : '') + '" data-reason="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') +
+      '<button class="chip' + (form.own ? ' on' : '') + '" data-own="1">' + esc(INFO.txt.btn_typeit) + '</button></div>' +
+      (form.own ? '<textarea id="ownReason" maxlength="200" placeholder="' + esc(u('reasonPh')) + '" style="margin-top:10px">' + esc(form.reason) + '</textarea>' : '') +
+      errLine(errs, ['事由']) + '</div>';
+    h += '<button class="btn primary" id="nextBtn">' + esc(u('next')) + '</button>';
+  }
+  $('#app').innerHTML = h;
+  window.scrollTo(0, 0);
+  bindForm();
+}
+function errLine(errs, keys) { const m = keys.map((x) => errs[x]).filter(Boolean); return m.length ? '<div class="err">' + esc(m.join('\n')) + '</div>' : ''; }
+function bindForm() {
+  document.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => { form.kind = b.dataset.kind; renderForm(); });
+  document.querySelectorAll('[data-type]').forEach((b) => b.onclick = () => { form.type = b.dataset.type; document.querySelectorAll('[data-type]').forEach((x) => x.classList.toggle('on', x === b)); });
+  document.querySelectorAll('[data-reason]').forEach((b) => b.onclick = () => { form.reason = b.dataset.reason; form.own = false; renderForm(); });
+  const own = document.querySelector('[data-own]');
+  if (own) own.onclick = () => { if (!form.own) { form.own = true; form.reason = ''; } renderForm(); setTimeout(() => $('#ownReason') && $('#ownReason').focus(), 50); };
+  const ta = $('#ownReason'); if (ta) ta.oninput = () => { form.reason = ta.value; };
+  document.querySelectorAll('input[data-k]').forEach((inp) => inp.onchange = () => {
+    const k = inp.dataset.k; form[k] = inp.value;
+    // 選了「從」的日期，「到」的日期自動帶同一天（還沒填或比較早時）
+    if (/^(old|new)SD$/.test(k)) { const e = k.slice(0, 3) + 'ED'; if (!form[e] || form[e] < form[k]) { form[e] = form[k]; const ei = document.querySelector('input[data-k="' + e + '"]'); if (ei) ei.value = form[k]; } }
+    ['oldS', 'oldE', 'newS', 'newE'].forEach((p) => { const w = $('#wd_' + p); if (w) w.textContent = wdText(form[p + 'D']); });
+  });
+  const nb = $('#nextBtn'); if (nb) nb.onclick = doCheck;
+}
+function dt(d, t) { return d && t ? d.replace(/-/g, '/') + ' ' + t : ''; }
+function localErrors() {
+  const e = {}, isAdd = form.kind === '新增假';
+  if (!form.kind) e['類型'] = u('need');
+  const pairs = isAdd ? [['new', '異動後起', '異動後迄']] : [['old', '異動前起', '異動前迄'], ['new', '異動後起', '異動後迄']];
+  pairs.forEach(([p, ks, ke]) => {
+    const s = dt(form[p + 'SD'], form[p + 'ST']), en = dt(form[p + 'ED'], form[p + 'ET']);
+    if (!s) e[ks] = INFO.labels[ks] + '：' + u('need');
+    else if (!en) e[ke] = INFO.labels[ke] + '：' + u('need');
+    else if (en <= s) e[ke] = u('endBefore');
+  });
+  if (isAdd && !form.type) e['假別'] = u('need');
+  if (!String(form.reason).trim()) e['事由'] = u('need');
+  return e;
+}
+async function doCheck() {
+  const le = localErrors();
+  if (Object.keys(le).length) { renderForm(le); return; }
+  const isAdd = form.kind === '新增假';
+  const data = { '類型': form.kind, '異動後起': dt(form.newSD, form.newST), '異動後迄': dt(form.newED, form.newET), '事由': form.reason.trim() };
+  if (isAdd) data['假別'] = form.type; else { data['異動前起'] = dt(form.oldSD, form.oldST); data['異動前迄'] = dt(form.oldED, form.oldET); }
+  busy(u('checking'));
+  try {
+    const r = await api('check', { data });
+    if (!r.ok) { if (r.code === 'invalid') { renderForm({ [r.field]: r.msg }); return; } return fail(r); }
+    renderConfirm(r);
+  } catch (e) { fail(e); } finally { busy(''); }
+}
+
+/* ===== 確認畫面（檢查結果） ===== */
+function renderConfirm(v, banner) {
+  VIEW = v;
+  let h = banner ? '<div class="banner">' + esc(banner) + '</div>' : '';
+  h += '<div class="card sum"><div style="font-size:13px;color:var(--muted);margin-bottom:8px">' + esc(INFO.txt.confirm_head) + '</div>' +
+    v.sections.map((s) => (s.title ? '<h3 style="color:' + esc(s.color) + '">' + esc(s.title) + '</h3>' : '<div style="height:8px"></div>') +
+      s.rows.map((r) => '<div class="kv"><span>' + esc(r.label) + '</span><span>' + esc(r.value === '' ? '-' : r.value) + '</span></div>').join('')).join('') + '</div>';
+  if (v.lines && v.lines.length) {
+    h += '<div class="card lines">' + v.lines.map((x) => '<div style="color:' + esc(x.c) + '">' + esc(x.t) + '</div>').join('') + '</div>';
+  }
+  if (v.canSubmit) h += '<button class="btn ok" id="sendBtn">' + esc(INFO.txt.btn_confirm) + '</button>';
+  if (v.suggestions && v.suggestions.length) {
+    h += '<div class="card" style="margin-top:12px"><h2>' + esc(u('sugT')) + '</h2><div class="chips">' +
+      v.suggestions.map((x) => '<button class="chip" data-shift="' + esc(x.d) + '">' + esc(x.label) + '</button>').join('') + '</div></div>';
+  }
+  if (v.canSwapW) h += '<button class="btn primary" id="swapwBtn">' + esc(INFO.txt.btn_swapw) + '</button><div id="cands"></div>';
+  if (v.exchange) h += '<button class="btn ghost" id="unswapBtn">' + esc(u('unswap')) + '</button>';
+  if (v.canForce) h += '<button class="btn warn" id="forceBtn">' + esc(INFO.txt.btn_force) + '</button><div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(u('forceHint')) + '</div>';
+  h += '<button class="btn ghost" id="editBtn">' + esc(u('edit')) + '</button>';
+  $('#app').innerHTML = h;
+  window.scrollTo(0, 0);
+  if ($('#sendBtn')) $('#sendBtn').onclick = () => doSubmit(false);
+  if ($('#forceBtn')) $('#forceBtn').onclick = () => doSubmit(true);
+  if ($('#editBtn')) $('#editBtn').onclick = () => renderForm();
+  if ($('#unswapBtn')) $('#unswapBtn').onclick = () => step('unpick');
+  if ($('#swapwBtn')) $('#swapwBtn').onclick = loadCands;
+  document.querySelectorAll('[data-shift]').forEach((b) => b.onclick = () => step('shift', { d: b.dataset.shift }, (r) => {
+    // 同步回填寫畫面：新休假改成建議的日期
+    const s = r.sections.flatMap((x) => x.rows).map((x) => x.value).filter((x) => /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/.test(x));
+    const nv = s.slice(-2);
+    if (nv.length === 2) { form.newSD = nv[0].slice(0, 10).replace(/\//g, '-'); form.newST = nv[0].slice(11); form.newED = nv[1].slice(0, 10).replace(/\//g, '-'); form.newET = nv[1].slice(11); }
+  }));
+}
+async function step(action, extra, after) {
+  busy(u('checking'));
+  try {
+    const r = await api(action, extra);
+    if (!r.ok) return fail(r);
+    if (after) after(r);
+    renderConfirm(r);
+  } catch (e) { fail(e); } finally { busy(''); }
+}
+async function loadCands() {
+  busy(u('checking'));
+  try {
+    const r = await api('cands');
+    if (!r.ok) return fail(r);
+    const box = $('#cands');
+    box.innerHTML = '<div class="card" style="margin-top:10px"><h2>' + esc(u('pickT')) + '</h2><div style="font-size:13px;color:var(--muted);margin-bottom:8px">' + esc(r.msg) + '</div><div class="chips">' +
+      r.cands.map((n) => '<button class="chip" data-b="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div></div>';
+    box.querySelectorAll('[data-b]').forEach((b) => b.onclick = () => step('pickb', { name: b.dataset.b }));
+    $('#swapwBtn').classList.add('hide');
+    box.scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { fail(e); } finally { busy(''); }
+}
+async function doSubmit(force) {
+  document.querySelectorAll('.btn').forEach((b) => b.disabled = true);
+  busy(u('submitting'));
+  try {
+    const r = await api('submit', { force });
+    if (!r.ok) { document.querySelectorAll('.btn').forEach((b) => b.disabled = false); return fail(r); }
+    if (r.stage === 'confirm') return renderConfirm(r, u('blocked'));
+    renderDone(r.msg);
+  } catch (e) { document.querySelectorAll('.btn').forEach((b) => b.disabled = false); fail(e); } finally { busy(''); }
+}
+function renderDone(msg) {
+  VIEW = null;
+  $('#app').innerHTML = '<div class="card done"><div class="big">✅</div><h2>' + esc(u('doneT')) + '</h2><pre>' + esc(msg) + '</pre>' +
+    '<button class="btn primary" id="closeBtn">' + esc(u('close')) + '</button></div>';
+  $('#closeBtn').onclick = closeWin;
+  document.querySelectorAll('#langs button').forEach((b) => b.disabled = true);
+}
+
+header();
+boot();
+</script>
+</body>
+</html>
