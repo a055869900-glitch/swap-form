@@ -173,6 +173,506 @@ async function api(action, extra) {
 }
 function fail(r) {
   const code = (r && r.code) || 'error';
+  if (code === 'auth') return center(u('auth'), { t: u('retry'), f: relogin });
+  if (code === 'setup') return center(u('setup'));
+  if (code === 'expired') { alert(u('expired')); return renderForm(); }
+  if (code === 'net') return alert(u('net'));
+  if (code === 'unbound' || code === 'notallowed') return center(r.msg, { t: u('close'), f: closeWin });
+  alert((r && r.msg) || u('net'));
+}
+function relogin() { try { if (!liff.isInClient()) { liff.logout(); liff.login({ redirectUri: location.href }); return; } } catch (e) {} location.reload(); }
+function closeWin() { try { if (liff.isInClient()) return liff.closeWindow(); } catch (e) {} window.close(); }
+
+/* ===== 啟動 ===== */
+async function boot() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    const tk = liff.getDecodedIDToken();
+    if (!liff.isInClient() && (!tk || tk.exp * 1000 < Date.now() + 60000)) { liff.logout(); liff.login({ redirectUri: location.href }); return; } // 在一般瀏覽器開：登入過期就重新登入
+    FORM = formParam();
+    await loadInfo();
+  } catch (e) {
+    center(u('auth') + '\n\n' + (e && e.message ? e.message : ''), { t: u('retry'), f: () => location.reload() });
+  }
+}
+async function loadInfo(newLang) {
+  busy(u('loading'));
+  try {
+    const r = await api('init', newLang ? { lang: newLang } : {});
+    if (!r.ok) return fail(r);
+    INFO = r; lang = r.lang; header();
+    if (VIEW) renderConfirm(VIEW); else renderForm();
+  } catch (e) { fail(e); } finally { busy(''); }
+}
+document.querySelectorAll('#langs button').forEach((b) => b.onclick = () => {
+  if (b.dataset.l === lang) return;
+  lang = b.dataset.l; header();
+  if (!INFO) return;
+  VIEW = null; // 換語言後回到填寫畫面，內容保留
+  loadInfo(lang);
+});
+
+/* ===== 填寫畫面 ===== */
+function wdText(d) { if (!d) return ''; const x = new Date(d + 'T00:00:00'); return isNaN(x) ? '' : '（' + u('wd')[x.getDay()] + '）'; }
+function dtRow(prefix, key, label) {
+  const d = form[prefix + key + 'D'], t = form[prefix + key + 'T'];
+  return '<div class="row"><label>' + esc(label) + '</label>' +
+    '<input type="date" data-k="' + prefix + key + 'D" min="' + (form.proxyOn ? INFO.today : INFO.minDate) + '" value="' + esc(d) + '">' +
+    '<input type="time" data-k="' + prefix + key + 'T" value="' + esc(t) + '">' +
+    '<div class="wd" id="wd_' + prefix + key + '">' + wdText(d) + '</div></div>';
+}
+function formParam() {
+  const p = new URLSearchParams(location.search);
+  let f = p.get('f');
+  if (!f && p.get('liff.state')) { try { f = new URLSearchParams(decodeURIComponent(p.get('liff.state')).replace(/^[^?]*\?/, '')).get('f'); } catch (e) {} }
+  return ['out', 'leave3'].indexOf(f) >= 0 ? f : 'swap';
+}
+function renderForm(errs) {
+  if (FORM !== 'swap') return renderForm2(errs);
+  VIEW = null; errs = errs || {};
+  const isAdd = form.kind === '新增假';
+  const k = INFO.kinds;
+  let h = '';
+  if (INFO.proxy && INFO.proxy.length) { // 主管：可以切換「幫員工登記（當面核准）」
+    h += '<div class="card"><div class="kinds">' +
+      '<button class="kind' + (!form.proxyOn ? ' on' : '') + '" data-mode="0">🙋 ' + esc(u('modeSelf')) + '</button>' +
+      '<button class="kind' + (form.proxyOn ? ' on' : '') + '" data-mode="1">👥 ' + esc(u('modeProxy')) + '</button></div>';
+    if (form.proxyOn) {
+      const groups = {};
+      INFO.proxy.forEach((x) => { (groups[x.g || '-'] = groups[x.g || '-'] || []).push(x.n); });
+      h += '<h2 style="margin-top:12px">' + esc(u('target')) + '</h2><select id="targetSel" style="width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;min-height:44px"><option value="">' + esc(u('targetPh')) + '</option>' +
+        Object.keys(groups).map((g) => '<optgroup label="' + esc(g) + '">' + groups[g].map((n) => '<option' + (form.target === n ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</optgroup>').join('') + '</select>' +
+        (errs['target'] ? '<div class="err">' + esc(errs['target']) + '</div>' : '') +
+        '<div style="font-size:13px;color:var(--blue);margin-top:8px">' + esc(u('proxyNote')) + '</div>';
+    }
+    h += '</div>';
+  }
+  if (!form.proxyOn) h += '<div class="note">' + esc(INFO.txt.note_swap) + '</div>';
+  h += '<div class="card"><h2>' + esc(u('kindQ')) + '</h2><div class="kinds">' +
+    '<button class="kind' + (form.kind === k[0].v ? ' on' : '') + '" data-kind="' + esc(k[0].v) + '">🔄 ' + esc(k[0].t) + '<small>' + esc(u('kindSwapHint')) + '</small></button>' +
+    '<button class="kind' + (form.kind === k[1].v ? ' on' : '') + '" data-kind="' + esc(k[1].v) + '">➕ ' + esc(k[1].t) + '<small>' + esc(u('kindAddHint')) + '</small></button>' +
+    '</div>' + (errs['類型'] ? '<div class="err">' + esc(errs['類型']) + '</div>' : '') + '</div>';
+  if (form.kind) {
+    if (!isAdd) {
+      h += '<div class="card"><div class="sec-title old">' + esc(u('oldT')) + '</div>' + dtRow('old', 'S', u('from')) + dtRow('old', 'E', u('to')) +
+        errLine(errs, ['異動前起', '異動前迄']) + '</div>';
+    }
+    h += '<div class="card"><div class="sec-title new">' + esc(isAdd ? u('addT') : u('newT')) + '</div>' + dtRow('new', 'S', u('from')) + dtRow('new', 'E', u('to')) +
+      errLine(errs, ['異動後起', '異動後迄']) + '</div>';
+    if (isAdd) {
+      h += '<div class="card"><h2>' + esc(INFO.labels['假別'] || u('typeQ')) + '</h2><div class="chips">' +
+        INFO.leaveTypes.map((o) => '<button class="chip' + (form.type === o.v ? ' on' : '') + '" data-type="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') +
+        '</div>' + errLine(errs, ['假別']) + '</div>';
+    }
+    const reasonIsOpt = INFO.reasons.some((o) => o.v === form.reason) && !form.own;
+    h += '<div class="card"><h2>' + esc(INFO.labels['事由'] || u('reasonQ')) + '</h2><div class="chips">' +
+      INFO.reasons.map((o) => '<button class="chip' + (reasonIsOpt && form.reason === o.v ? ' on' : '') + '" data-reason="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') +
+      '<button class="chip' + (form.own ? ' on' : '') + '" data-own="1">' + esc(INFO.txt.btn_typeit) + '</button></div>' +
+      (form.own ? '<textarea id="ownReason" maxlength="200" placeholder="' + esc(u('reasonPh')) + '" style="margin-top:10px">' + esc(form.reason) + '</textarea>' : '') +
+      errLine(errs, ['事由']) + '</div>';
+    h += '<button class="btn primary" id="nextBtn">' + esc(u('next')) + '</button>';
+  }
+  $('#app').innerHTML = h;
+  window.scrollTo(0, 0);
+  bindForm();
+}
+function errLine(errs, keys) { const m = keys.map((x) => errs[x]).filter(Boolean); return m.length ? '<div class="err">' + esc(m.join('\n')) + '</div>' : ''; }
+function bindForm() {
+  document.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { form.proxyOn = b.dataset.mode === '1'; renderForm(); });
+  const ts = $('#targetSel'); if (ts) ts.onchange = () => { form.target = ts.value; };
+  document.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => { form.kind = b.dataset.kind; renderForm(); });
+  document.querySelectorAll('[data-type]').forEach((b) => b.onclick = () => { form.type = b.dataset.type; document.querySelectorAll('[data-type]').forEach((x) => x.classList.toggle('on', x === b)); });
+  document.querySelectorAll('[data-reason]').forEach((b) => b.onclick = () => { form.reason = b.dataset.reason; form.own = false; renderForm(); });
+  const own = document.querySelector('[data-own]');
+  if (own) own.onclick = () => { if (!form.own) { form.own = true; form.reason = ''; } renderForm(); setTimeout(() => $('#ownReason') && $('#ownReason').focus(), 50); };
+  const ta = $('#ownReason'); if (ta) ta.oninput = () => { form.reason = ta.value; };
+  document.querySelectorAll('input[data-k]').forEach((inp) => inp.onchange = () => {
+    const k = inp.dataset.k; form[k] = inp.value;
+    // 選了「從」的日期，「到」的日期自動帶同一天（還沒填或比較早時）
+    if (/^(old|new)SD$/.test(k)) { const e = k.slice(0, 3) + 'ED'; if (!form[e] || form[e] < form[k]) { form[e] = form[k]; const ei = document.querySelector('input[data-k="' + e + '"]'); if (ei) ei.value = form[k]; } }
+    ['oldS', 'oldE', 'newS', 'newE'].forEach((p) => { const w = $('#wd_' + p); if (w) w.textContent = wdText(form[p + 'D']); });
+  });
+  const nb = $('#nextBtn'); if (nb) nb.onclick = doCheck;
+}
+function dt(d, t) { return d && t ? d.replace(/-/g, '/') + ' ' + t : ''; }
+function localErrors() {
+  const e = {}, isAdd = form.kind === '新增假';
+  if (form.proxyOn && !form.target) e['target'] = u('need');
+  if (!form.kind) e['類型'] = u('need');
+  const pairs = isAdd ? [['new', '異動後起', '異動後迄']] : [['old', '異動前起', '異動前迄'], ['new', '異動後起', '異動後迄']];
+  pairs.forEach(([p, ks, ke]) => {
+    const s = dt(form[p + 'SD'], form[p + 'ST']), en = dt(form[p + 'ED'], form[p + 'ET']);
+    if (!s) e[ks] = INFO.labels[ks] + '：' + u('need');
+    else if (!en) e[ke] = INFO.labels[ke] + '：' + u('need');
+    else if (en <= s) e[ke] = u('endBefore');
+  });
+  if (isAdd && !form.type) e['假別'] = u('need');
+  if (!String(form.reason).trim()) e['事由'] = u('need');
+  return e;
+}
+async function doCheck() {
+  const le = localErrors();
+  if (Object.keys(le).length) { renderForm(le); return; }
+  const isAdd = form.kind === '新增假';
+  const data = { '類型': form.kind, '異動後起': dt(form.newSD, form.newST), '異動後迄': dt(form.newED, form.newET), '事由': form.reason.trim() };
+  if (isAdd) data['假別'] = form.type; else { data['異動前起'] = dt(form.oldSD, form.oldST); data['異動前迄'] = dt(form.oldED, form.oldET); }
+  busy(u('checking'));
+  try {
+    const r = await api('check', { data, target: form.proxyOn ? form.target : '' });
+    if (!r.ok) { if (r.code === 'invalid') { renderForm({ [r.field]: r.msg }); return; } return fail(r); }
+    renderConfirm(r);
+  } catch (e) { fail(e); } finally { busy(''); }
+}
+
+/* ===== 確認畫面（檢查結果） ===== */
+function renderConfirm(v, banner) {
+  VIEW = v;
+  let h = banner ? '<div class="banner">' + esc(banner) + '</div>' : '';
+  if (v.proxy) h += '<div class="banner" style="background:var(--blue-soft);color:var(--blue)">👥 ' + esc(u('proxyBanner').replace('{0}', v.proxy.target)) + '</div>';
+  h += '<div class="card sum"><div style="font-size:13px;color:var(--muted);margin-bottom:8px">' + esc(INFO.txt.confirm_head) + '</div>' +
+    v.sections.map((s) => (s.title ? '<h3 style="color:' + esc(s.color) + '">' + esc(s.title) + '</h3>' : '<div style="height:8px"></div>') +
+      s.rows.map((r) => '<div class="kv"><span>' + esc(r.label) + '</span><span>' + esc(r.value === '' ? '-' : r.value) + '</span></div>').join('')).join('') + '</div>';
+  if (v.lines && v.lines.length) {
+    h += '<div class="card lines">' + v.lines.map((x) => isWarn(x.c)
+      ? '<div class="warnline"><span class="ico">⚠️</span><span>' + esc(String(x.t).replace(/^⚠\uFE0F?\s*/, '')) + '</span></div>'
+      : '<div style="color:' + esc(x.c) + '">' + esc(x.t) + '</div>').join('') + '</div>';
+  }
+  if (v.canSubmit) h += '<button class="btn ok" id="sendBtn">' + esc(v.proxy ? u('proxySend') : INFO.txt.btn_confirm) + '</button>';
+  if (v.suggestions && v.suggestions.length) {
+    h += '<div class="card" style="margin-top:12px"><h2>' + esc(u('sugT')) + '</h2><div class="chips">' +
+      v.suggestions.map((x) => '<button class="chip" data-shift="' + esc(x.d) + '">' + esc(x.label) + '</button>').join('') + '</div></div>';
+  }
+  if (v.canSwapW) h += '<button class="btn primary" id="swapwBtn">' + esc(INFO.txt.btn_swapw) + '</button><div id="cands"></div>';
+  if (v.exchange) h += '<button class="btn ghost" id="unswapBtn">' + esc(u('unswap')) + '</button>';
+  if (v.canForce) h += '<div class="card" style="margin-top:12px"><h2>' + esc(u('whyQ')) + '</h2><textarea id="whyText" maxlength="200" placeholder="' + esc(u('whyPh')) + '"></textarea><div class="err" id="whyErr"></div>' +
+    '<button class="btn warn" id="forceBtn">' + esc(INFO.txt.btn_force) + '</button><div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(u('forceHint')) + '</div></div>';
+  h += '<button class="btn ghost" id="editBtn">' + esc(u('edit')) + '</button>';
+  $('#app').innerHTML = h;
+  window.scrollTo(0, 0);
+  if ($('#sendBtn')) $('#sendBtn').onclick = () => doSubmit(false);
+  if ($('#forceBtn')) $('#forceBtn').onclick = () => doSubmit(true);
+  if ($('#editBtn')) $('#editBtn').onclick = () => renderForm();
+  if ($('#unswapBtn')) $('#unswapBtn').onclick = () => step('unpick');
+  if ($('#swapwBtn')) $('#swapwBtn').onclick = loadCands;
+  document.querySelectorAll('[data-shift]').forEach((b) => b.onclick = () => step('shift', { d: b.dataset.shift }, (r) => {
+    // 同步回填寫畫面：新休假改成建議的日期
+    const s = r.sections.flatMap((x) => x.rows).map((x) => x.value).filter((x) => /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/.test(x));
+    const nv = s.slice(-2);
+    if (nv.length === 2) { form.newSD = nv[0].slice(0, 10).replace(/\//g, '-'); form.newST = nv[0].slice(11); form.newED = nv[1].slice(0, 10).replace(/\//g, '-'); form.newET = nv[1].slice(11); }
+  }));
+}
+async function step(action, extra, after) {
+  busy(u('checking'));
+  try {
+    const r = await api(action, extra);
+    if (!r.ok) return fail(r);
+    if (after) after(r);
+    renderConfirm(r);
+  } catch (e) { fail(e); } finally { busy(''); }
+}
+async function loadCands() {
+  busy(u('checking'));
+  try {
+    const r = await api('cands');
+    if (!r.ok) return fail(r);
+    const box = $('#cands');
+    box.innerHTML = '<div class="card" style="margin-top:10px"><h2>' + esc(u('pickT')) + '</h2><div style="font-size:13px;color:var(--muted);margin-bottom:8px">' + esc(r.msg) + '</div><div class="chips">' +
+      r.cands.map((n) => '<button class="chip" data-b="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div></div>';
+    box.querySelectorAll('[data-b]').forEach((b) => b.onclick = () => step('pickb', { name: b.dataset.b }));
+    $('#swapwBtn').classList.add('hide');
+    box.scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { fail(e); } finally { busy(''); }
+}
+async function doSubmit(force) {
+  const why = force && $('#whyText') ? $('#whyText').value.trim() : '';
+  if (force && !why) { $('#whyErr').textContent = u('need'); $('#whyText').focus(); return; }
+  document.querySelectorAll('.btn').forEach((b) => b.disabled = true);
+  busy(u('submitting'));
+  try {
+    const r = await api('submit', { force, why });
+    if (!r.ok) {
+      document.querySelectorAll('.btn').forEach((b) => b.disabled = false);
+      if (r.code === 'invalid' && $('#whyErr')) { $('#whyErr').textContent = r.msg; return; }
+      return fail(r);
+    }
+    if (r.stage === 'confirm') return renderConfirm(r, u('blocked'));
+    renderDone(r.msg);
+  } catch (e) { document.querySelectorAll('.btn').forEach((b) => b.disabled = false); fail(e); } finally { busy(''); }
+}
+function renderDone(msg) {
+  VIEW = null;
+  $('#app').innerHTML = '<div class="card done"><div class="big">✅</div><h2>' + esc(u('doneT')) + '</h2><pre>' + esc(msg) + '</pre>' +
+    '<button class="btn primary" id="closeBtn">' + esc(u('close')) + '</button></div>';
+  $('#closeBtn').onclick = closeWin;
+  document.querySelectorAll('#langs button').forEach((b) => b.disabled = true);
+}
+
+/* ===== 外出登記、連休三天 ===== */
+function isWarn(c) { return /^#(e60012|c0392b)$/i.test(String(c || '')); }
+function pad2(n) { return ('0' + n).slice(-2); }
+function ymd(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function addDays(s, n) { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); }
+function nowHM() { const d = new Date(); let m = Math.ceil(d.getMinutes() / 10) * 10, h = d.getHours(); if (m === 60) { m = 0; h = (h + 1) % 24; } return pad2(h) + ':' + pad2(m); }
+function chips(list, cur, attr, own) {
+  return '<div class="chips">' + list.map((o) => '<button class="chip' + (!own && cur === o.v ? ' on' : '') + '" ' + attr + '="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') + '</div>';
+}
+function lbl(k) { return (INFO.labels && INFO.labels[k]) || k; }
+function errHtml(errs, k) { return errs[k] ? '<div class="err">' + esc(errs[k]) + '</div>' : ''; }
+function renderForm2(errs) {
+  VIEW = null; errs = errs || {};
+  let h = '';
+  if (FORM === 'out') {
+    if (!f2.date) f2.date = INFO.today;
+    if (!f2.ts) f2.ts = nowHM();
+    h += '<div class="card"><h2>' + esc(lbl('日期')) + '</h2><input type="date" id="o_date" value="' + esc(f2.date) + '"><div class="wd" style="margin-top:4px">' + wdText(f2.date) + '</div>' + errHtml(errs, '日期') + '</div>';
+    h += '<div class="card"><div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('外出起')) + '</label><input type="time" id="o_ts" value="' + esc(f2.ts) + '"></div>' + errHtml(errs, '外出起') +
+      '<div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('外出迄')) + '</label><input type="time" id="o_te" value="' + esc(f2.te) + '"></div>' + errHtml(errs, '外出迄') + '</div>';
+    h += '<div class="card"><h2>' + esc(lbl('外出事由')) + '</h2>' + reasonBlock(INFO.outReasons) + errHtml(errs, '外出事由') + '</div>';
+    h += '<div class="card"><h2>' + esc(lbl('外出地點')) + '</h2><input type="text" id="o_place" maxlength="100" placeholder="' + esc(u('placePh')) + '" value="' + esc(f2.place) + '">' + errHtml(errs, '外出地點') +
+      '<h2 style="margin-top:12px">' + esc(lbl('連繫電話')) + '</h2><input type="tel" id="o_phone" maxlength="30" placeholder="' + esc(u('phonePh')) + '" value="' + esc(f2.phone) + '">' + errHtml(errs, '連繫電話') + '</div>';
+  } else {
+    h += '<div class="note">' + esc(INFO.txt.note_leave3) + '</div>';
+    const n = f2.ds && f2.de && f2.de >= f2.ds ? Math.round((new Date(f2.de + 'T00:00:00') - new Date(f2.ds + 'T00:00:00')) / 86400000) + 1 : 0;
+    h += '<div class="card"><div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('請假起')) + '</label><input type="date" id="l_ds" value="' + esc(f2.ds) + '" min="' + INFO.today + '"></div><div class="wd" style="margin:-4px 0 8px 104px">' + wdText(f2.ds) + '</div>' + errHtml(errs, '請假起') +
+      '<div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('請假迄')) + '</label><input type="date" id="l_de" value="' + esc(f2.de) + '" min="' + (f2.ds || INFO.today) + '"></div><div class="wd" style="margin:-4px 0 8px 104px">' + wdText(f2.de) + '</div>' + errHtml(errs, '請假迄') +
+      (n ? '<div class="daycount">' + esc(u('dayCount').replace('{0}', n)) + '</div>' : '') + '</div>';
+    h += '<div class="card"><h2>' + esc(lbl('事由')) + '</h2>' + reasonBlock(INFO.reasons) + errHtml(errs, '事由') + '</div>';
+  }
+  h += '<div class="card"><h2>' + esc(lbl('備註')) + '</h2><div class="chips"><button class="chip' + (!f2.memoOwn ? ' on' : '') + '" data-memo="0">' + esc(INFO.none[0].t) + '</button><button class="chip' + (f2.memoOwn ? ' on' : '') + '" data-memo="1">' + esc(INFO.txt.btn_typeit) + '</button></div>' +
+    (f2.memoOwn ? '<textarea id="memoText" maxlength="200" style="margin-top:10px">' + esc(f2.memo === '無' ? '' : f2.memo) + '</textarea>' : '') + errHtml(errs, '備註') + '</div>';
+  h += (errs.form ? '<div class="err">' + esc(errs.form) + '</div>' : '') + '<button class="btn primary" id="nextBtn">' + esc(u('next2')) + '</button>';
+  $('#app').innerHTML = h;
+  window.scrollTo(0, 0);
+  bindForm2();
+}
+function reasonBlock(list) {
+  const isOpt = !f2.own && list.some((o) => o.v === f2.reason);
+  return chips(list, isOpt ? f2.reason : '', 'data-r', false).replace('</div>', '<button class="chip' + (f2.own ? ' on' : '') + '" data-rown="1">' + esc(INFO.txt.btn_typeit) + '</button></div>') +
+    (f2.own ? '<textarea id="reasonText" maxlength="200" placeholder="' + esc(u('reasonPh')) + '" style="margin-top:10px">' + esc(f2.reason) + '</textarea>' : '');
+}
+function bindForm2() {
+  const on = (sel, ev, fn) => { const e = $(sel); if (e) e[ev] = fn; };
+  on('#o_date', 'onchange', (e) => { f2.date = e.target.value; renderForm2(); });
+  on('#o_ts', 'onchange', (e) => { f2.ts = e.target.value; });
+  on('#o_te', 'onchange', (e) => { f2.te = e.target.value; });
+  on('#o_place', 'oninput', (e) => { f2.place = e.target.value; });
+  on('#o_phone', 'oninput', (e) => { f2.phone = e.target.value; });
+  on('#l_ds', 'onchange', (e) => { f2.ds = e.target.value; if (f2.ds && (!f2.de || f2.de < f2.ds)) f2.de = addDays(f2.ds, 2); renderForm2(); }); // 連休至少 3 天：最後一天先帶第 3 天
+  on('#l_de', 'onchange', (e) => { f2.de = e.target.value; renderForm2(); });
+  on('#reasonText', 'oninput', (e) => { f2.reason = e.target.value; });
+  on('#memoText', 'oninput', (e) => { f2.memo = e.target.value; });
+  document.querySelectorAll('[data-r]').forEach((b) => b.onclick = () => { f2.reason = b.dataset.r; f2.own = false; renderForm2(); });
+  document.querySelectorAll('[data-rown]').forEach((b) => b.onclick = () => { if (!f2.own) { f2.own = true; f2.reason = ''; } renderForm2(); setTimeout(() => $('#reasonText') && $('#reasonText').focus(), 50); });
+  document.querySelectorAll('[data-memo]').forEach((b) => b.onclick = () => { f2.memoOwn = b.dataset.memo === '1'; f2.memo = f2.memoOwn ? '' : '無'; renderForm2(); });
+  on('#nextBtn', 'onclick', doCheck2);
+}
+async function doCheck2() {
+  const e = {};
+  let data;
+  if (FORM === 'out') {
+    if (!f2.date) e['日期'] = u('need');
+    if (!f2.ts) e['外出起'] = u('need');
+    if (!f2.te) e['外出迄'] = u('need'); else if (f2.ts && f2.te <= f2.ts) e['外出迄'] = u('endBefore');
+    if (!String(f2.reason).trim()) e['外出事由'] = u('need');
+    if (!f2.place.trim()) e['外出地點'] = u('need');
+    if (!f2.phone.trim()) e['連繫電話'] = u('need');
+    data = { '日期': f2.date, '外出起': f2.ts, '外出迄': f2.te, '外出事由': f2.reason.trim(), '外出地點': f2.place.trim(), '連繫電話': f2.phone.trim(), '備註': (f2.memo || '').trim() || '無' };
+  } else {
+    if (!f2.ds) e['請假起'] = u('need');
+    if (!f2.de) e['請假迄'] = u('need');
+    if (!String(f2.reason).trim()) e['事由'] = u('need');
+    data = { '請假起': f2.ds, '請假迄': f2.de, '事由': f2.reason.trim(), '備註': (f2.memo || '').trim() || '無' };
+  }
+  if (Object.keys(e).length) return renderForm2(e);
+  busy(u('checking'));
+  try {
+    const r = await api('check2', { data });
+    if (!r.ok) { if (r.code === 'invalid') return renderForm2({ [r.field in data ? r.field : 'form']: r.msg }); return fail(r); }
+    renderConfirm(r);
+  } catch (err) { fail(err); } finally { busy(''); }
+}
+
+header();
+boot();
+</script>
+</body>
+</html>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>換(改)假／新增假</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --bg: #f3f5f8; --card: #fff; --ink: #1f2933; --muted: #6b7785; --line: #e1e6ec;
+    --blue: #2e86de; --blue-soft: #e8f2fc; --green: #27ae60; --orange: #e67e22; --red: #e60012; --red-soft: #ffeaea;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font: 16px/1.5 -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", Roboto, sans-serif; padding-bottom: env(safe-area-inset-bottom); }
+  header { background: var(--blue); color: #fff; padding: 14px 16px 12px; position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .who { font-size: 13px; opacity: .9; margin-top: 2px; }
+  .langs { position: absolute; right: 12px; top: 12px; display: flex; gap: 4px; }
+  .langs button { background: rgba(255,255,255,.18); color: #fff; border: 0; border-radius: 6px; font-size: 12px; padding: 4px 7px; }
+  .langs button.on { background: #fff; color: var(--blue); font-weight: 700; }
+  main { max-width: 560px; margin: 0 auto; padding: 12px 16px 24px; }
+  .card { background: var(--card); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .card h2 { font-size: 15px; margin: 0 0 10px; }
+  .note { font-size: 13px; color: var(--muted); white-space: pre-line; background: #fff8e6; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  .kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kind { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 14px 8px; text-align: center; font-size: 16px; font-weight: 700; color: var(--ink); }
+  .kind small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .kind.on { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
+  .sec-title { font-weight: 700; font-size: 14px; margin: 0 0 8px; }
+  .sec-title.old { color: var(--orange); } .sec-title.new { color: var(--green); }
+  .row { display: grid; grid-template-columns: 44px 1fr 124px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .row label { font-size: 14px; color: var(--muted); }
+  input[type=date], input[type=time], textarea { width: 100%; font: inherit; font-size: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); min-height: 44px; }
+  textarea { min-height: 70px; resize: vertical; }
+  .wd { grid-column: 2 / 4; font-size: 12px; color: var(--muted); margin-top: -6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 15px; color: var(--ink); min-height: 40px; }
+  .chip.on { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .err { color: var(--red); font-size: 13px; margin-top: 6px; white-space: pre-line; }
+  .bad { outline: 2px solid var(--red); }
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px; font-size: 17px; font-weight: 700; margin-top: 10px; min-height: 50px; }
+  .btn.primary { background: var(--blue); color: #fff; }
+  .btn.ok { background: var(--green); color: #fff; }
+  .btn.warn { background: #fff; color: var(--red); border: 2px solid var(--red); }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); font-weight: 400; }
+  .btn:disabled { opacity: .5; }
+  .sum h3 { font-size: 14px; margin: 12px 0 6px; } .sum h3:first-child { margin-top: 0; }
+  .kv { display: grid; grid-template-columns: 38% 1fr; gap: 6px; font-size: 15px; padding: 3px 0; }
+  .kv span:first-child { color: var(--muted); } .kv span:last-child { font-weight: 700; word-break: break-word; }
+  .lines div { font-size: 14px; padding: 6px 0; border-top: 1px dashed var(--line); white-space: pre-line; }
+  .lines div:first-child { border-top: 0; }
+  .lines div.warnline { display: flex; gap: 8px; align-items: flex-start; color: var(--red); font-weight: 700; font-size: 15px; background: var(--red-soft); border: 0; border-left: 5px solid var(--red); border-radius: 8px; padding: 10px; margin: 6px 0; }
+  .warnline .ico { font-size: 20px; line-height: 1.2; flex: none; }
+  .daycount { font-size: 14px; color: var(--blue); font-weight: 700; margin-top: 4px; }
+  input[type=text], input[type=tel] { width: 100%; font: inherit; font-size: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); min-height: 44px; }
+  .banner { background: var(--red-soft); color: var(--red); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; white-space: pre-line; }
+  .done { text-align: center; padding: 20px 10px; }
+  .done .big { font-size: 48px; }
+  .done pre { text-align: left; white-space: pre-wrap; font: inherit; font-size: 15px; background: var(--bg); border-radius: 10px; padding: 12px; }
+  .center { text-align: center; color: var(--muted); padding: 40px 10px; white-space: pre-line; }
+  .spin { width: 34px; height: 34px; border: 4px solid var(--blue-soft); border-top-color: var(--blue); border-radius: 50%; margin: 0 auto 12px; animation: r 0.9s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  .overlay { position: fixed; inset: 0; background: rgba(255,255,255,.75); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 20; font-size: 15px; color: var(--muted); }
+  .overlay.show { display: flex; }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="hTitle">換(改)假／新增假</h1>
+  <div class="who" id="hWho">&nbsp;</div>
+  <div class="langs" id="langs">
+    <button data-l="zh">中</button><button data-l="id">ID</button><button data-l="vi">VI</button>
+  </div>
+</header>
+<main id="app"><div class="center"><div class="spin"></div><span id="bootMsg">讀取中…</span></div></main>
+<div class="overlay" id="overlay"><div class="spin"></div><div id="overlayMsg"></div></div>
+
+<script>
+/* ===== 設定：只要改這兩行 ===== */
+const LIFF_ID = '2012224367-Zfm8Nat5';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxQQ9-pMf-O6zdoH6fDpdlTciYtI7LUm_SZgun81f5F69XkKpfMNzp1mXmhbVAq0R9Z/exec';
+/* ============================== */
+
+const UI = {
+  zh: {
+    title: '換(改)假／新增假', loading: '讀取中…', checking: '檢查排休中…', submitting: '送出中…',
+    kindQ: '要辦理哪一種？', kindSwapHint: '把原本的休假改到別天', kindAddHint: '多請一段假',
+    oldT: '🔄 原本的休假', newT: '🆕 改成的休假', addT: '➕ 新增的假', from: '從', to: '到',
+    typeQ: '假別', reasonQ: '事由', reasonPh: '請輸入事由',
+    next2: '下一步：確認內容', placePh: '例如：西螺郵局', phonePh: '例如：0912345678', dayCount: '共 {0} 天', today: '今天',
+    next: '下一步：檢查排休', edit: '✏️ 修改內容', close: '關閉', retry: '重新整理',
+    endBefore: '結束時間要晚於開始時間', need: '請填寫這一項',
+    sugT: '📅 建議改成這幾天（還有名額）', pickT: '🔁 選擇要對調的同事', unswap: '不對調了，回到一般申請',
+    forceHint: '選「仍要送出」會交給主管決定是否特准。',
+    whyQ: '仍要送出的理由（必填，主管會看到）', whyPh: '例如：家裡有事、已和同事商量好',
+    modeSelf: '自己申請', modeProxy: '幫員工登記（當面核准）', target: '員工', targetPh: '請選擇員工',
+    proxyNote: '主管當面同意的假，當天、隔天也可以登記。送出後直接核准，系統自動修改排休表並通知行政。', proxySend: '✅ 確認登記並核准', proxyBanner: '主管代登記：{0}（送出後直接核准）',
+    blocked: '⚠ 剛剛名額被用掉了，請看最新的檢查結果。',
+    doneT: '已送出', net: '網路連線失敗，請再按一次。', auth: '身分驗證失敗，請關閉後從 LINE 重新開啟。',
+    expired: '頁面停留太久，資料已過期，請重新填寫。', setup: '表單尚未設定完成（API_URL），請聯絡副廠長。',
+    wd: ['日','一','二','三','四','五','六'],
+  },
+  id: {
+    title: 'Tukar/Tambah Libur', loading: 'Memuat…', checking: 'Mengecek jadwal…', submitting: 'Mengirim…',
+    kindQ: 'Mau mengajukan apa?', kindSwapHint: 'Pindahkan libur lama ke hari lain', kindAddHint: 'Ambil cuti tambahan',
+    oldT: '🔄 Libur yang lama', newT: '🆕 Libur yang baru', addT: '➕ Cuti tambahan', from: 'Mulai', to: 'Sampai',
+    typeQ: 'Jenis cuti', reasonQ: 'Alasan', reasonPh: 'Ketik alasan',
+    next2: 'Lanjut: periksa isi', placePh: 'Contoh: Kantor Pos Xiluo', phonePh: 'Contoh: 0912345678', dayCount: 'Total {0} hari', today: 'Hari ini',
+    next: 'Lanjut: cek jadwal', edit: '✏️ Ubah isian', close: 'Tutup', retry: 'Muat ulang',
+    endBefore: 'Waktu selesai harus setelah waktu mulai', need: 'Mohon isi bagian ini',
+    sugT: '📅 Saran tanggal (masih ada kuota)', pickT: '🔁 Pilih rekan untuk bertukar', unswap: 'Batal tukar, kembali ke pengajuan biasa',
+    forceHint: 'Jika memilih "Tetap kirim", atasan yang akan memutuskan.',
+    whyQ: 'Alasan tetap kirim (wajib, akan dilihat atasan)', whyPh: 'Contoh: urusan keluarga, sudah bicara dengan rekan',
+    modeSelf: 'Untuk saya', modeProxy: 'Daftarkan karyawan (disetujui langsung)', target: 'Karyawan', targetPh: 'Pilih karyawan',
+    proxyNote: 'Libur yang sudah disetujui langsung oleh atasan, termasuk hari ini dan besok, bisa didaftarkan di sini. Setelah dikirim langsung disetujui, jadwal libur diperbarui otomatis.', proxySend: '✅ Daftarkan & setujui', proxyBanner: 'Didaftarkan atasan untuk: {0} (langsung disetujui)',
+    blocked: '⚠ Kuota baru saja terpakai, lihat hasil cek terbaru.',
+    doneT: 'Terkirim', net: 'Koneksi gagal, silakan tekan lagi.', auth: 'Verifikasi gagal. Tutup dan buka lagi dari LINE.',
+    expired: 'Halaman terlalu lama dibuka, silakan isi ulang.', setup: 'Formulir belum siap (API_URL). Hubungi Wakil Kepala Pabrik.',
+    wd: ['Min','Sen','Sel','Rab','Kam','Jum','Sab'],
+  },
+  vi: {
+    title: 'Đổi/Thêm ngày nghỉ', loading: 'Đang tải…', checking: 'Đang kiểm tra lịch…', submitting: 'Đang gửi…',
+    kindQ: 'Bạn muốn làm gì?', kindSwapHint: 'Chuyển ngày nghỉ cũ sang ngày khác', kindAddHint: 'Xin nghỉ thêm',
+    oldT: '🔄 Ngày nghỉ cũ', newT: '🆕 Ngày nghỉ mới', addT: '➕ Ngày nghỉ thêm', from: 'Từ', to: 'Đến',
+    typeQ: 'Loại nghỉ', reasonQ: 'Lý do', reasonPh: 'Nhập lý do',
+    next2: 'Tiếp: kiểm tra nội dung', placePh: 'Ví dụ: Bưu điện Tây Loa', phonePh: 'Ví dụ: 0912345678', dayCount: 'Tổng {0} ngày', today: 'Hôm nay',
+    next: 'Tiếp: kiểm tra lịch', edit: '✏️ Sửa nội dung', close: 'Đóng', retry: 'Tải lại',
+    endBefore: 'Giờ kết thúc phải sau giờ bắt đầu', need: 'Vui lòng điền mục này',
+    sugT: '📅 Gợi ý ngày (còn chỗ)', pickT: '🔁 Chọn đồng nghiệp để đổi', unswap: 'Không đổi nữa, quay lại đơn thường',
+    forceHint: 'Chọn "Vẫn gửi" thì quản lý sẽ quyết định.',
+    whyQ: 'Lý do vẫn gửi (bắt buộc, quản lý sẽ thấy)', whyPh: 'Ví dụ: việc gia đình, đã bàn với đồng nghiệp',
+    modeSelf: 'Cho tôi', modeProxy: 'Đăng ký cho nhân viên (duyệt trực tiếp)', target: 'Nhân viên', targetPh: 'Chọn nhân viên',
+    proxyNote: 'Ngày nghỉ đã được quản lý đồng ý trực tiếp, kể cả hôm nay và ngày mai, có thể đăng ký tại đây. Gửi xong sẽ được duyệt ngay, bảng nghỉ tự động cập nhật.', proxySend: '✅ Đăng ký và duyệt', proxyBanner: 'Quản lý đăng ký cho: {0} (duyệt ngay)',
+    blocked: '⚠ Vừa hết chỗ, hãy xem kết quả kiểm tra mới nhất.',
+    doneT: 'Đã gửi', net: 'Lỗi kết nối, vui lòng bấm lại.', auth: 'Xác thực thất bại. Hãy đóng và mở lại từ LINE.',
+    expired: 'Trang mở quá lâu, vui lòng điền lại.', setup: 'Biểu mẫu chưa cài đặt xong (API_URL). Liên hệ Phó Giám đốc nhà máy.',
+    wd: ['CN','T2','T3','T4','T5','T6','T7'],
+  },
+};
+const DEF_START = '08:00', DEF_END = '17:00';
+let lang = 'zh', INFO = null, VIEW = null;
+let FORM = 'swap'; // 這一頁辦哪一種：swap 換(改)假／out 外出登記／leave3 連休三天（網址 ?f=out、?f=leave3）
+const f2 = { date: '', ts: '', te: '', ds: '', de: '', reason: '', own: false, place: '', phone: '', memo: '無', memoOwn: false };
+const form = { proxyOn: false, target: '', kind: '', oldSD: '', oldST: DEF_START, oldED: '', oldET: DEF_END, newSD: '', newST: DEF_START, newED: '', newET: DEF_END, type: '', reason: '', own: false };
+const $ = (s) => document.querySelector(s);
+const u = (k) => (UI[lang] && UI[lang][k]) || UI.zh[k];
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function busy(msg) { $('#overlayMsg').textContent = msg || ''; $('#overlay').classList.toggle('show', !!msg); }
+function center(msg, btn) {
+  $('#app').innerHTML = '<div class="center">' + esc(msg) + (btn ? '<button class="btn ghost" id="cBtn">' + esc(btn.t) + '</button>' : '') + '</div>';
+  if (btn) $('#cBtn').onclick = btn.f;
+}
+function formTitle() { return INFO && INFO.titles && INFO.titles[FORM] ? INFO.titles[FORM] : u('title'); }
+function header() {
+  $('#hTitle').textContent = formTitle();
+  $('#hWho').textContent = INFO ? INFO.name + '（' + INFO.group + '）' : ' ';
+  document.querySelectorAll('#langs button').forEach((b) => b.classList.toggle('on', b.dataset.l === lang));
+  document.title = formTitle();
+}
+
+async function api(action, extra) {
+  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) throw Object.assign(new Error('setup'), { code: 'setup' });
+  const body = Object.assign({ liff: 1, action, lang, form: FORM, idToken: liff.getIDToken() }, extra || {});
+  let res;
+  try {
+    res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  } catch (e) { throw Object.assign(new Error('net'), { code: 'net' }); }
+  if (!res.ok) throw Object.assign(new Error('net'), { code: 'net' });
+  return res.json();
+}
+function fail(r) {
+  const code = (r && r.code) || 'error';
   if (code === 'auth') return center(u('auth'), { t: u('close'), f: closeWin });
   if (code === 'setup') return center(u('setup'));
   if (code === 'expired') { alert(u('expired')); return renderForm(); }
