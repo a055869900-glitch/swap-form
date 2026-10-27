@@ -91,6 +91,8 @@ const UI = {
     sugT: '📅 建議改成這幾天（還有名額）', pickT: '🔁 選擇要對調的同事', unswap: '不對調了，回到一般申請',
     forceHint: '選「仍要送出」會交給主管決定是否特准。',
     whyQ: '仍要送出的理由（必填，主管會看到）', whyPh: '例如：家裡有事、已和同事商量好',
+    modeSelf: '自己申請', modeProxy: '幫員工登記（當面核准）', target: '員工', targetPh: '請選擇員工',
+    proxyNote: '主管當面同意的假，當天、隔天也可以登記。送出後直接核准，系統自動修改排休表並通知行政。', proxySend: '✅ 確認登記並核准', proxyBanner: '主管代登記：{0}（送出後直接核准）',
     blocked: '⚠ 剛剛名額被用掉了，請看最新的檢查結果。',
     doneT: '已送出', net: '網路連線失敗，請再按一次。', auth: '身分驗證失敗，請關閉後從 LINE 重新開啟。',
     expired: '頁面停留太久，資料已過期，請重新填寫。', setup: '表單尚未設定完成（API_URL），請聯絡副廠長。',
@@ -106,6 +108,8 @@ const UI = {
     sugT: '📅 Saran tanggal (masih ada kuota)', pickT: '🔁 Pilih rekan untuk bertukar', unswap: 'Batal tukar, kembali ke pengajuan biasa',
     forceHint: 'Jika memilih "Tetap kirim", atasan yang akan memutuskan.',
     whyQ: 'Alasan tetap kirim (wajib, akan dilihat atasan)', whyPh: 'Contoh: urusan keluarga, sudah bicara dengan rekan',
+    modeSelf: 'Untuk saya', modeProxy: 'Daftarkan karyawan (disetujui langsung)', target: 'Karyawan', targetPh: 'Pilih karyawan',
+    proxyNote: 'Libur yang sudah disetujui langsung oleh atasan, termasuk hari ini dan besok, bisa didaftarkan di sini. Setelah dikirim langsung disetujui, jadwal libur diperbarui otomatis.', proxySend: '✅ Daftarkan & setujui', proxyBanner: 'Didaftarkan atasan untuk: {0} (langsung disetujui)',
     blocked: '⚠ Kuota baru saja terpakai, lihat hasil cek terbaru.',
     doneT: 'Terkirim', net: 'Koneksi gagal, silakan tekan lagi.', auth: 'Verifikasi gagal. Tutup dan buka lagi dari LINE.',
     expired: 'Halaman terlalu lama dibuka, silakan isi ulang.', setup: 'Formulir belum siap (API_URL). Hubungi Wakil Kepala Pabrik.',
@@ -121,6 +125,8 @@ const UI = {
     sugT: '📅 Gợi ý ngày (còn chỗ)', pickT: '🔁 Chọn đồng nghiệp để đổi', unswap: 'Không đổi nữa, quay lại đơn thường',
     forceHint: 'Chọn "Vẫn gửi" thì quản lý sẽ quyết định.',
     whyQ: 'Lý do vẫn gửi (bắt buộc, quản lý sẽ thấy)', whyPh: 'Ví dụ: việc gia đình, đã bàn với đồng nghiệp',
+    modeSelf: 'Cho tôi', modeProxy: 'Đăng ký cho nhân viên (duyệt trực tiếp)', target: 'Nhân viên', targetPh: 'Chọn nhân viên',
+    proxyNote: 'Ngày nghỉ đã được quản lý đồng ý trực tiếp, kể cả hôm nay và ngày mai, có thể đăng ký tại đây. Gửi xong sẽ được duyệt ngay, bảng nghỉ tự động cập nhật.', proxySend: '✅ Đăng ký và duyệt', proxyBanner: 'Quản lý đăng ký cho: {0} (duyệt ngay)',
     blocked: '⚠ Vừa hết chỗ, hãy xem kết quả kiểm tra mới nhất.',
     doneT: 'Đã gửi', net: 'Lỗi kết nối, vui lòng bấm lại.', auth: 'Xác thực thất bại. Hãy đóng và mở lại từ LINE.',
     expired: 'Trang mở quá lâu, vui lòng điền lại.', setup: 'Biểu mẫu chưa cài đặt xong (API_URL). Liên hệ Phó Giám đốc nhà máy.',
@@ -129,7 +135,7 @@ const UI = {
 };
 const DEF_START = '08:00', DEF_END = '17:00';
 let lang = 'zh', INFO = null, VIEW = null;
-const form = { kind: '', oldSD: '', oldST: DEF_START, oldED: '', oldET: DEF_END, newSD: '', newST: DEF_START, newED: '', newET: DEF_END, type: '', reason: '', own: false };
+const form = { proxyOn: false, target: '', kind: '', oldSD: '', oldST: DEF_START, oldED: '', oldET: DEF_END, newSD: '', newST: DEF_START, newED: '', newET: DEF_END, type: '', reason: '', own: false };
 const $ = (s) => document.querySelector(s);
 const u = (k) => (UI[lang] && UI[lang][k]) || UI.zh[k];
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -198,7 +204,7 @@ function wdText(d) { if (!d) return ''; const x = new Date(d + 'T00:00:00'); ret
 function dtRow(prefix, key, label) {
   const d = form[prefix + key + 'D'], t = form[prefix + key + 'T'];
   return '<div class="row"><label>' + esc(label) + '</label>' +
-    '<input type="date" data-k="' + prefix + key + 'D" min="' + INFO.minDate + '" value="' + esc(d) + '">' +
+    '<input type="date" data-k="' + prefix + key + 'D" min="' + (form.proxyOn ? INFO.today : INFO.minDate) + '" value="' + esc(d) + '">' +
     '<input type="time" data-k="' + prefix + key + 'T" value="' + esc(t) + '">' +
     '<div class="wd" id="wd_' + prefix + key + '">' + wdText(d) + '</div></div>';
 }
@@ -206,7 +212,22 @@ function renderForm(errs) {
   VIEW = null; errs = errs || {};
   const isAdd = form.kind === '新增假';
   const k = INFO.kinds;
-  let h = '<div class="note">' + esc(INFO.txt.note_swap) + '</div>';
+  let h = '';
+  if (INFO.proxy && INFO.proxy.length) { // 主管：可以切換「幫員工登記（當面核准）」
+    h += '<div class="card"><div class="kinds">' +
+      '<button class="kind' + (!form.proxyOn ? ' on' : '') + '" data-mode="0">🙋 ' + esc(u('modeSelf')) + '</button>' +
+      '<button class="kind' + (form.proxyOn ? ' on' : '') + '" data-mode="1">👥 ' + esc(u('modeProxy')) + '</button></div>';
+    if (form.proxyOn) {
+      const groups = {};
+      INFO.proxy.forEach((x) => { (groups[x.g || '-'] = groups[x.g || '-'] || []).push(x.n); });
+      h += '<h2 style="margin-top:12px">' + esc(u('target')) + '</h2><select id="targetSel" style="width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;min-height:44px"><option value="">' + esc(u('targetPh')) + '</option>' +
+        Object.keys(groups).map((g) => '<optgroup label="' + esc(g) + '">' + groups[g].map((n) => '<option' + (form.target === n ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</optgroup>').join('') + '</select>' +
+        (errs['target'] ? '<div class="err">' + esc(errs['target']) + '</div>' : '') +
+        '<div style="font-size:13px;color:var(--blue);margin-top:8px">' + esc(u('proxyNote')) + '</div>';
+    }
+    h += '</div>';
+  }
+  if (!form.proxyOn) h += '<div class="note">' + esc(INFO.txt.note_swap) + '</div>';
   h += '<div class="card"><h2>' + esc(u('kindQ')) + '</h2><div class="kinds">' +
     '<button class="kind' + (form.kind === k[0].v ? ' on' : '') + '" data-kind="' + esc(k[0].v) + '">🔄 ' + esc(k[0].t) + '<small>' + esc(u('kindSwapHint')) + '</small></button>' +
     '<button class="kind' + (form.kind === k[1].v ? ' on' : '') + '" data-kind="' + esc(k[1].v) + '">➕ ' + esc(k[1].t) + '<small>' + esc(u('kindAddHint')) + '</small></button>' +
@@ -237,6 +258,8 @@ function renderForm(errs) {
 }
 function errLine(errs, keys) { const m = keys.map((x) => errs[x]).filter(Boolean); return m.length ? '<div class="err">' + esc(m.join('\n')) + '</div>' : ''; }
 function bindForm() {
+  document.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { form.proxyOn = b.dataset.mode === '1'; renderForm(); });
+  const ts = $('#targetSel'); if (ts) ts.onchange = () => { form.target = ts.value; };
   document.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => { form.kind = b.dataset.kind; renderForm(); });
   document.querySelectorAll('[data-type]').forEach((b) => b.onclick = () => { form.type = b.dataset.type; document.querySelectorAll('[data-type]').forEach((x) => x.classList.toggle('on', x === b)); });
   document.querySelectorAll('[data-reason]').forEach((b) => b.onclick = () => { form.reason = b.dataset.reason; form.own = false; renderForm(); });
@@ -254,6 +277,7 @@ function bindForm() {
 function dt(d, t) { return d && t ? d.replace(/-/g, '/') + ' ' + t : ''; }
 function localErrors() {
   const e = {}, isAdd = form.kind === '新增假';
+  if (form.proxyOn && !form.target) e['target'] = u('need');
   if (!form.kind) e['類型'] = u('need');
   const pairs = isAdd ? [['new', '異動後起', '異動後迄']] : [['old', '異動前起', '異動前迄'], ['new', '異動後起', '異動後迄']];
   pairs.forEach(([p, ks, ke]) => {
@@ -274,7 +298,7 @@ async function doCheck() {
   if (isAdd) data['假別'] = form.type; else { data['異動前起'] = dt(form.oldSD, form.oldST); data['異動前迄'] = dt(form.oldED, form.oldET); }
   busy(u('checking'));
   try {
-    const r = await api('check', { data });
+    const r = await api('check', { data, target: form.proxyOn ? form.target : '' });
     if (!r.ok) { if (r.code === 'invalid') { renderForm({ [r.field]: r.msg }); return; } return fail(r); }
     renderConfirm(r);
   } catch (e) { fail(e); } finally { busy(''); }
@@ -284,13 +308,14 @@ async function doCheck() {
 function renderConfirm(v, banner) {
   VIEW = v;
   let h = banner ? '<div class="banner">' + esc(banner) + '</div>' : '';
+  if (v.proxy) h += '<div class="banner" style="background:var(--blue-soft);color:var(--blue)">👥 ' + esc(u('proxyBanner').replace('{0}', v.proxy.target)) + '</div>';
   h += '<div class="card sum"><div style="font-size:13px;color:var(--muted);margin-bottom:8px">' + esc(INFO.txt.confirm_head) + '</div>' +
     v.sections.map((s) => (s.title ? '<h3 style="color:' + esc(s.color) + '">' + esc(s.title) + '</h3>' : '<div style="height:8px"></div>') +
       s.rows.map((r) => '<div class="kv"><span>' + esc(r.label) + '</span><span>' + esc(r.value === '' ? '-' : r.value) + '</span></div>').join('')).join('') + '</div>';
   if (v.lines && v.lines.length) {
     h += '<div class="card lines">' + v.lines.map((x) => '<div style="color:' + esc(x.c) + '">' + esc(x.t) + '</div>').join('') + '</div>';
   }
-  if (v.canSubmit) h += '<button class="btn ok" id="sendBtn">' + esc(INFO.txt.btn_confirm) + '</button>';
+  if (v.canSubmit) h += '<button class="btn ok" id="sendBtn">' + esc(v.proxy ? u('proxySend') : INFO.txt.btn_confirm) + '</button>';
   if (v.suggestions && v.suggestions.length) {
     h += '<div class="card" style="margin-top:12px"><h2>' + esc(u('sugT')) + '</h2><div class="chips">' +
       v.suggestions.map((x) => '<button class="chip" data-shift="' + esc(x.d) + '">' + esc(x.label) + '</button>').join('') + '</div></div>';
