@@ -90,6 +90,7 @@ const UI = {
     kindQ: '要辦理哪一種？', kindSwapHint: '把原本的休假改到別天', kindAddHint: '多請一段假',
     oldT: '🔄 原本的休假', newT: '🆕 改成的休假', addT: '➕ 新增的假', from: '從', to: '到',
     typeQ: '假別', reasonQ: '事由', reasonPh: '請輸入事由',
+    phoneAsk: '手機號碼和上次不同：\n原本：{0}\n這次：{1}\n要把新號碼存起來，以後自動帶入嗎？', phoneYes: '✅ 是，換成新號碼', phoneNo: '只用這一次，不要改',
     next2: '下一步：確認內容', placePh: '例如：西螺郵局', phonePh: '例如：0912345678', dayCount: '共 {0} 天', today: '今天',
     next: '下一步：檢查排休', edit: '✏️ 修改內容', close: '關閉', retry: '重新整理',
     endBefore: '結束時間要晚於開始時間', need: '請填寫這一項',
@@ -108,6 +109,7 @@ const UI = {
     kindQ: 'Mau mengajukan apa?', kindSwapHint: 'Pindahkan libur lama ke hari lain', kindAddHint: 'Ambil cuti tambahan',
     oldT: '🔄 Libur yang lama', newT: '🆕 Libur yang baru', addT: '➕ Cuti tambahan', from: 'Mulai', to: 'Sampai',
     typeQ: 'Jenis cuti', reasonQ: 'Alasan', reasonPh: 'Ketik alasan',
+    phoneAsk: 'Nomor HP berbeda dari sebelumnya:\nSebelumnya: {0}\nSekarang: {1}\nSimpan nomor baru supaya terisi otomatis berikutnya?', phoneYes: '✅ Ya, ganti nomor baru', phoneNo: 'Hanya kali ini, jangan diganti',
     next2: 'Lanjut: periksa isi', placePh: 'Contoh: Kantor Pos Xiluo', phonePh: 'Contoh: 0912345678', dayCount: 'Total {0} hari', today: 'Hari ini',
     next: 'Lanjut: cek jadwal', edit: '✏️ Ubah isian', close: 'Tutup', retry: 'Muat ulang',
     endBefore: 'Waktu selesai harus setelah waktu mulai', need: 'Mohon isi bagian ini',
@@ -126,6 +128,7 @@ const UI = {
     kindQ: 'Bạn muốn làm gì?', kindSwapHint: 'Chuyển ngày nghỉ cũ sang ngày khác', kindAddHint: 'Xin nghỉ thêm',
     oldT: '🔄 Ngày nghỉ cũ', newT: '🆕 Ngày nghỉ mới', addT: '➕ Ngày nghỉ thêm', from: 'Từ', to: 'Đến',
     typeQ: 'Loại nghỉ', reasonQ: 'Lý do', reasonPh: 'Nhập lý do',
+    phoneAsk: 'Số điện thoại khác lần trước:\nTrước: {0}\nLần này: {1}\nLưu số mới để tự động điền lần sau?', phoneYes: '✅ Có, đổi số mới', phoneNo: 'Chỉ dùng lần này, không đổi',
     next2: 'Tiếp: kiểm tra nội dung', placePh: 'Ví dụ: Bưu điện Tây Loa', phonePh: 'Ví dụ: 0912345678', dayCount: 'Tổng {0} ngày', today: 'Hôm nay',
     next: 'Tiếp: kiểm tra lịch', edit: '✏️ Sửa nội dung', close: 'Đóng', retry: 'Tải lại',
     endBefore: 'Giờ kết thúc phải sau giờ bắt đầu', need: 'Vui lòng điền mục này',
@@ -390,13 +393,14 @@ async function doSubmit(force) {
   document.querySelectorAll('.btn').forEach((b) => b.disabled = true);
   busy(u('submitting'));
   try {
-    const r = await api('submit', { force, why });
+    const r = await api('submit', { force, why, savePhone: FORM === 'out' && !!f2.savePhone });
     if (!r.ok) {
       document.querySelectorAll('.btn').forEach((b) => b.disabled = false);
       if (r.code === 'invalid' && $('#whyErr')) { $('#whyErr').textContent = r.msg; return; }
       return fail(r);
     }
     if (r.stage === 'confirm') return renderConfirm(r, u('blocked'));
+    if (FORM === 'out' && f2.savePhone) INFO.savedPhone = f2.phone.trim();
     renderDone(r.msg);
   } catch (e) { document.querySelectorAll('.btn').forEach((b) => b.disabled = false); fail(e); } finally { busy(''); }
 }
@@ -419,12 +423,24 @@ function chips(list, cur, attr, own) {
 }
 function lbl(k) { return (INFO.labels && INFO.labels[k]) || k; }
 function errHtml(errs, k) { return errs[k] ? '<div class="err">' + esc(errs[k]) + '</div>' : ''; }
+function askPhone(oldP, newP) {
+  return new Promise((resolve) => {
+    const m = document.createElement('div');
+    m.className = 'overlay show';
+    m.style.background = 'rgba(0,0,0,.45)';
+    m.innerHTML = '<div class="card" style="max-width:340px;margin:16px;color:var(--ink)"><div style="white-space:pre-line;font-size:15px">' + esc(u('phoneAsk').replace('{0}', oldP).replace('{1}', newP)) + '</div>' +
+      '<button class="btn primary" data-a="1">' + esc(u('phoneYes')) + '</button><button class="btn ghost" data-a="0">' + esc(u('phoneNo')) + '</button></div>';
+    m.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => { m.remove(); resolve(b.dataset.a === '1'); });
+    document.body.appendChild(m);
+  });
+}
 function renderForm2(errs) {
   VIEW = null; errs = errs || {};
   let h = '';
   if (FORM === 'out') {
     if (!f2.date) f2.date = INFO.today;
     if (!f2.ts) f2.ts = nowHM();
+    if (!f2.phone && !f2.phoneTouched && INFO.savedPhone) f2.phone = INFO.savedPhone; // 上次用過的手機號碼自動帶入
     h += '<div class="card"><h2>' + esc(lbl('日期')) + '</h2><input type="date" id="o_date" value="' + esc(f2.date) + '"><div class="wd" style="margin-top:4px">' + wdText(f2.date) + '</div>' + errHtml(errs, '日期') + '</div>';
     h += '<div class="card"><div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('外出起')) + '</label><input type="time" id="o_ts" value="' + esc(f2.ts) + '"></div>' + errHtml(errs, '外出起') +
       '<div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('外出迄')) + '</label><input type="time" id="o_te" value="' + esc(f2.te) + '"></div>' + errHtml(errs, '外出迄') + '</div>';
@@ -457,7 +473,7 @@ function bindForm2() {
   on('#o_ts', 'onchange', (e) => { f2.ts = e.target.value; });
   on('#o_te', 'onchange', (e) => { f2.te = e.target.value; });
   on('#o_place', 'oninput', (e) => { f2.place = e.target.value; });
-  on('#o_phone', 'oninput', (e) => { f2.phone = e.target.value; });
+  on('#o_phone', 'oninput', (e) => { f2.phone = e.target.value; f2.phoneTouched = true; });
   on('#l_ds', 'onchange', (e) => { f2.ds = e.target.value; if (f2.ds && (!f2.de || f2.de < f2.ds)) f2.de = addDays(f2.ds, 2); renderForm2(); }); // 連休至少 3 天：最後一天先帶第 3 天
   on('#l_de', 'onchange', (e) => { f2.de = e.target.value; renderForm2(); });
   on('#reasonText', 'oninput', (e) => { f2.reason = e.target.value; });
@@ -485,6 +501,10 @@ async function doCheck2() {
     data = { '請假起': f2.ds, '請假迄': f2.de, '事由': f2.reason.trim(), '備註': (f2.memo || '').trim() || '無' };
   }
   if (Object.keys(e).length) return renderForm2(e);
+  if (FORM === 'out') { // 手機號碼：第一次填的自動記住；和記住的不同時，問要不要換成新號碼
+    const saved = String(INFO.savedPhone || '').trim(), now = f2.phone.trim();
+    f2.savePhone = !saved ? true : saved === now ? false : await askPhone(saved, now);
+  }
   busy(u('checking'));
   try {
     const r = await api('check2', { data });
