@@ -290,7 +290,7 @@ function renderForm(errs) {
     }
     h += '<div class="card"><div class="sec-title new">' + esc(isAdd ? u('addT') : u('newT')) + '</div>' + dtRow('new', 'S', u('from')) + dtRow('new', 'E', u('to')) +
       errLine(errs, ['異動後起', '異動後迄']) + '</div>';
-    if (isAdd) {
+    { // 換(改)假、新增假都要選假別
       h += '<div class="card"><h2>' + esc(INFO.labels['假別'] || u('typeQ')) + '</h2><div class="chips">' +
         INFO.leaveTypes.map((o) => '<button class="chip' + (form.type === o.v ? ' on' : '') + '" data-type="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') +
         '</div>' + errLine(errs, ['假別']) + '</div>';
@@ -353,7 +353,7 @@ function localErrors() {
     else if (!en) e[ke] = INFO.labels[ke] + '：' + u('need');
     else if (en <= s) e[ke] = u('endBefore');
   });
-  if (isAdd && !form.type) e['假別'] = u('need');
+  if (!form.type) e['假別'] = u('need');
   if (!String(form.reason).trim()) e['事由'] = u('need');
   return e;
 }
@@ -362,7 +362,8 @@ async function doCheck() {
   if (Object.keys(le).length) { renderForm(le); return; }
   const isAdd = form.kind === '新增假';
   const data = { '類型': form.kind, '異動後起': dt(form.newSD, form.newST), '異動後迄': dt(form.newED, form.newET), '事由': form.reason.trim() };
-  if (isAdd) data['假別'] = form.type; else { data['異動前起'] = dt(form.oldSD, form.oldST); data['異動前迄'] = dt(form.oldED, form.oldET); }
+  data['假別'] = form.type;
+  if (!isAdd) { data['異動前起'] = dt(form.oldSD, form.oldST); data['異動前迄'] = dt(form.oldED, form.oldET); }
   busy(u('checking'));
   try {
     const r = await api('check', { data, target: form.proxyOn ? form.target : '' });
