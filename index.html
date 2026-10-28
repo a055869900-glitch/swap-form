@@ -115,6 +115,7 @@ const UI = {
     next: '下一步：檢查排休', edit: '✏️ 修改內容', close: '關閉', retry: '重新整理',
     endBefore: '結束時間要晚於開始時間', need: '請填寫這一項',
     sugT: '📅 建議改成這幾天（還有名額）', pickT: '🔁 選擇要對調的同事', unswap: '不對調了，回到一般申請',
+    typeAll: '全部同一種，按一下就全部套用：', typeEach: '每天也可以選不同的假別：', typePick: '請選擇',
     missing: '還有 {0} 項沒有填好，請補上紅框標示的地方：', agreeT: '🤝 已經和同事講好了嗎？', agreeHint: '已經當面和下面的同事講好了：選是哪一位，再幫對方選改休哪一天，就可以直接送出。機器人不會通知對方，核准後兩個人的排休表會一起更新。', agreeEx: '🔁 {0} 改休我原本的日期（{1}）', agreeOther: '📅 或 {0} 改休別天（{1} 天）：', agreeOtherBtn: '確定改休這天起', agreeFrom: '{0} 要改掉的休假：{1}', agreed: '🤝 已和 {0} 講好：{0} 的休假從 {1} 改到 {2}（由你登記，不會另外通知對方）', unagree: '取消，重新選擇', whyRule: '同休', whyFull: '人數已滿',
     forceHint: '選「仍要送出」會交給主管決定是否特准。',
     whyQ: '仍要送出的理由（必填，主管會看到）', whyPh: '例如：家裡有事、已和同事商量好',
@@ -135,6 +136,7 @@ const UI = {
     next: 'Lanjut: cek jadwal', edit: '✏️ Ubah isian', close: 'Tutup', retry: 'Muat ulang',
     endBefore: 'Waktu selesai harus setelah waktu mulai', need: 'Mohon isi bagian ini',
     sugT: '📅 Saran tanggal (masih ada kuota)', pickT: '🔁 Pilih rekan untuk bertukar', unswap: 'Batal tukar, kembali ke pengajuan biasa',
+    typeAll: 'Semua sama, tekan untuk menerapkan ke semua hari:', typeEach: 'Atau pilih jenis cuti tiap hari:', typePick: 'Pilih',
     missing: 'Masih ada {0} bagian yang belum diisi dengan benar, lengkapi kotak merah:', agreeT: '🤝 Sudah sepakat dengan rekan?', agreeHint: 'Jika sudah sepakat langsung dengan rekan di bawah: pilih rekannya, lalu pilih hari libur barunya, lalu kirim. Bot tidak memberi tahu rekan; setelah disetujui jadwal keduanya diperbarui.', agreeEx: '🔁 {0} libur di tanggal lama saya ({1})', agreeOther: '📅 Atau {0} libur di hari lain ({1} hari):', agreeOtherBtn: 'Pakai tanggal ini', agreeFrom: 'Libur {0} yang diganti: {1}', agreed: '🤝 Sudah sepakat dengan {0}: libur {0} dari {1} ke {2} (didaftarkan oleh Anda, rekan tidak diberi tahu)', unagree: 'Batal, pilih lagi', whyRule: 'libur bersamaan', whyFull: 'kuota penuh',
     forceHint: 'Jika memilih "Tetap kirim", atasan yang akan memutuskan.',
     whyQ: 'Alasan tetap kirim (wajib, akan dilihat atasan)', whyPh: 'Contoh: urusan keluarga, sudah bicara dengan rekan',
@@ -155,6 +157,7 @@ const UI = {
     next: 'Tiếp: kiểm tra lịch', edit: '✏️ Sửa nội dung', close: 'Đóng', retry: 'Tải lại',
     endBefore: 'Giờ kết thúc phải sau giờ bắt đầu', need: 'Vui lòng điền mục này',
     sugT: '📅 Gợi ý ngày (còn chỗ)', pickT: '🔁 Chọn đồng nghiệp để đổi', unswap: 'Không đổi nữa, quay lại đơn thường',
+    typeAll: 'Giống nhau, bấm để áp dụng cho tất cả các ngày:', typeEach: 'Hoặc chọn loại nghỉ cho từng ngày:', typePick: 'Chọn',
     missing: 'Còn {0} mục chưa điền đúng, hãy bổ sung các ô viền đỏ:', agreeT: '🤝 Đã thỏa thuận với đồng nghiệp chưa?', agreeHint: 'Nếu đã thỏa thuận trực tiếp với đồng nghiệp bên dưới: chọn người đó, rồi chọn ngày nghỉ mới của họ, rồi gửi. Bot không báo đồng nghiệp; sau khi duyệt bảng nghỉ của cả hai được cập nhật.', agreeEx: '🔁 {0} nghỉ vào ngày cũ của tôi ({1})', agreeOther: '📅 Hoặc {0} nghỉ ngày khác ({1} ngày):', agreeOtherBtn: 'Chọn ngày này', agreeFrom: 'Ngày nghỉ của {0} cần đổi: {1}', agreed: '🤝 Đã thỏa thuận với {0}: ngày nghỉ của {0} từ {1} sang {2} (bạn đăng ký, không báo đồng nghiệp)', unagree: 'Hủy, chọn lại', whyRule: 'nghỉ trùng', whyFull: 'đủ người',
     forceHint: 'Chọn "Vẫn gửi" thì quản lý sẽ quyết định.',
     whyQ: 'Lý do vẫn gửi (bắt buộc, quản lý sẽ thấy)', whyPh: 'Ví dụ: việc gia đình, đã bàn với đồng nghiệp',
@@ -169,7 +172,7 @@ const UI = {
 const DEF_START = '08:00', DEF_END = '17:00';
 let lang = preLang(), INFO = null, VIEW = null;
 let FORM = 'swap'; // 這一頁辦哪一種：swap 換(改)假／out 外出登記／leave3 連休三天（網址 ?f=out、?f=leave3）
-const f2 = { date: '', ts: '', te: '', ds: '', de: '', type: '', reason: '', own: false, place: '', phone: '', memo: '無', memoOwn: false };
+const f2 = { date: '', ts: '', te: '', ds: '', de: '', type: '', types: {}, reason: '', own: false, place: '', phone: '', memo: '無', memoOwn: false };
 const form = { proxyOn: false, target: '', kind: '', oldSD: '', oldST: DEF_START, oldED: '', oldET: DEF_END, newSD: '', newST: DEF_START, newED: '', newET: DEF_END, type: '', reason: '', own: false };
 const $ = (s) => document.querySelector(s);
 const u = (k) => (UI[lang] && UI[lang][k]) || UI.zh[k];
@@ -489,6 +492,13 @@ function chips(list, cur, attr, own) {
   return '<div class="chips">' + list.map((o) => '<button class="chip' + (!own && cur === o.v ? ' on' : '') + '" ' + attr + '="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') + '</div>';
 }
 function lbl(k) { return (INFO.labels && INFO.labels[k]) || k; }
+// 連休三天：第一天到最後一天的每一天（yyyy-mm-dd），最多 31 天
+function l3Days() {
+  if (!f2.ds || !f2.de || f2.de < f2.ds) return [];
+  const out = []; let d = f2.ds;
+  for (let i = 0; i < 31 && d <= f2.de; i++) { out.push(d); d = addDays(d, 1); }
+  return out;
+}
 function errHtml(errs, k) { return errs[k] ? '<div class="err">' + esc(errs[k]) + '</div>' : ''; }
 function askPhone(oldP, newP) {
   return new Promise((resolve) => {
@@ -520,7 +530,12 @@ function renderForm2(errs) {
     h += '<div class="card"><div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('請假起')) + '</label><input type="date" id="l_ds" value="' + esc(f2.ds) + '" min="' + INFO.today + '"></div><div class="wd" style="margin:-4px 0 8px 104px">' + wdText(f2.ds) + '</div>' + errHtml(errs, '請假起') +
       '<div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('請假迄')) + '</label><input type="date" id="l_de" value="' + esc(f2.de) + '" min="' + (f2.ds || INFO.today) + '"></div><div class="wd" style="margin:-4px 0 8px 104px">' + wdText(f2.de) + '</div>' + errHtml(errs, '請假迄') +
       (n ? '<div class="daycount">' + esc(u('dayCount').replace('{0}', n)) + '</div>' : '') + '</div>';
-    h += '<div class="card"><h2>' + esc(lbl('假別')) + '</h2><div class="chips">' + INFO.leaveTypes.map((o) => '<button class="chip' + (f2.type === o.v ? ' on' : '') + '" data-l3type="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') + '</div>' + errHtml(errs, '假別') + '</div>';
+    const days = l3Days(); // 連休的每一天：可以全部選同一種假別，也可以每天選不同的
+    if (f2.type) days.forEach((d) => { if (!f2.types[d]) f2.types[d] = f2.type; }); // 改了日期：新加的日子先帶入「全部套用」的假別
+    const allSame = days.length && days.every((d) => f2.types[d] && f2.types[d] === f2.types[days[0]]) ? f2.types[days[0]] : '';
+    h += '<div class="card"><h2>' + esc(lbl('假別')) + '</h2><div style="font-size:13px;color:var(--muted);margin-bottom:6px">' + esc(u('typeAll')) + '</div><div class="chips">' + INFO.leaveTypes.map((o) => '<button class="chip' + (allSame === o.v ? ' on' : '') + '" data-l3type="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') + '</div>' +
+      (days.length ? '<div style="font-size:13px;color:var(--muted);margin:12px 0 6px">' + esc(u('typeEach')) + '</div>' + days.map((d) => '<div class="row" style="grid-template-columns:110px 1fr"><label>' + esc(d.slice(5).replace('-', '/') + wdText(d)) + '</label><select data-dtype="' + d + '" style="width:100%;font:inherit;font-size:16px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff;min-height:44px' + (f2.types[d] ? '' : ';border-color:var(--red)') + '"><option value="">' + esc(u('typePick')) + '</option>' + INFO.leaveTypes.map((o) => '<option value="' + esc(o.v) + '"' + (f2.types[d] === o.v ? ' selected' : '') + '>' + esc(o.t) + '</option>').join('') + '</select></div>').join('') : '') +
+      errHtml(errs, '假別') + '</div>';
     h += '<div class="card"><h2>' + esc(lbl('事由')) + '</h2>' + reasonBlock(INFO.reasons) + errHtml(errs, '事由') + '</div>';
   }
   h += '<div class="card"><h2>' + esc(lbl('備註')) + '</h2><div class="chips"><button class="chip' + (!f2.memoOwn ? ' on' : '') + '" data-memo="0">' + esc(INFO.none[0].t) + '</button><button class="chip' + (f2.memoOwn ? ' on' : '') + '" data-memo="1">' + esc(INFO.txt.btn_typeit) + '</button></div>' +
@@ -545,7 +560,8 @@ function bindForm2() {
   on('#o_phone', 'oninput', (e) => { f2.phone = e.target.value; f2.phoneTouched = true; });
   on('#l_ds', 'onchange', (e) => { f2.ds = e.target.value; if (f2.ds && (!f2.de || f2.de < f2.ds)) f2.de = addDays(f2.ds, 2); renderForm2(); }); // 連休至少 3 天：最後一天先帶第 3 天
   on('#l_de', 'onchange', (e) => { f2.de = e.target.value; renderForm2(); });
-  document.querySelectorAll('[data-l3type]').forEach((b) => b.onclick = () => { f2.type = b.dataset.l3type; document.querySelectorAll('[data-l3type]').forEach((x) => x.classList.toggle('on', x === b)); });
+  document.querySelectorAll('[data-l3type]').forEach((b) => b.onclick = () => { f2.type = b.dataset.l3type; l3Days().forEach((d) => { f2.types[d] = f2.type; }); renderForm2(); }); // 全部套用同一種
+  document.querySelectorAll('[data-dtype]').forEach((sel) => sel.onchange = () => { f2.types[sel.dataset.dtype] = sel.value; renderForm2(); }); // 單獨改某一天
   on('#reasonText', 'oninput', (e) => { f2.reason = e.target.value; });
   on('#memoText', 'oninput', (e) => { f2.memo = e.target.value; });
   document.querySelectorAll('[data-r]').forEach((b) => b.onclick = () => { f2.reason = b.dataset.r; f2.own = false; renderForm2(); });
@@ -567,9 +583,11 @@ async function doCheck2() {
   } else {
     if (!f2.ds) e['請假起'] = u('need');
     if (!f2.de) e['請假迄'] = u('need');
-    if (!f2.type) e['假別'] = u('need');
+    const ld = l3Days();
+    if (!ld.length || ld.some((d) => !f2.types[d])) e['假別'] = u('need');
     if (!String(f2.reason).trim()) e['事由'] = u('need');
-    data = { '請假起': f2.ds, '請假迄': f2.de, '假別': f2.type, '事由': f2.reason.trim(), '備註': (f2.memo || '').trim() || '無' };
+    const per = {}; l3Days().forEach((d) => { per[d] = f2.types[d]; });
+    data = { '請假起': f2.ds, '請假迄': f2.de, '假別': f2.types[l3Days()[0]] || '', '每日假別': per, '事由': f2.reason.trim(), '備註': (f2.memo || '').trim() || '無' };
   }
   if (Object.keys(e).length) return renderForm2(e);
   if (FORM === 'out') { // 手機號碼：第一次填的自動記住；和記住的不同時，問要不要換成新號碼
