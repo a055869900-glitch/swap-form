@@ -169,7 +169,7 @@ const UI = {
 const DEF_START = '08:00', DEF_END = '17:00';
 let lang = preLang(), INFO = null, VIEW = null;
 let FORM = 'swap'; // 這一頁辦哪一種：swap 換(改)假／out 外出登記／leave3 連休三天（網址 ?f=out、?f=leave3）
-const f2 = { date: '', ts: '', te: '', ds: '', de: '', reason: '', own: false, place: '', phone: '', memo: '無', memoOwn: false };
+const f2 = { date: '', ts: '', te: '', ds: '', de: '', type: '', reason: '', own: false, place: '', phone: '', memo: '無', memoOwn: false };
 const form = { proxyOn: false, target: '', kind: '', oldSD: '', oldST: DEF_START, oldED: '', oldET: DEF_END, newSD: '', newST: DEF_START, newED: '', newET: DEF_END, type: '', reason: '', own: false };
 const $ = (s) => document.querySelector(s);
 const u = (k) => (UI[lang] && UI[lang][k]) || UI.zh[k];
@@ -520,6 +520,7 @@ function renderForm2(errs) {
     h += '<div class="card"><div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('請假起')) + '</label><input type="date" id="l_ds" value="' + esc(f2.ds) + '" min="' + INFO.today + '"></div><div class="wd" style="margin:-4px 0 8px 104px">' + wdText(f2.ds) + '</div>' + errHtml(errs, '請假起') +
       '<div class="row" style="grid-template-columns:96px 1fr"><label>' + esc(lbl('請假迄')) + '</label><input type="date" id="l_de" value="' + esc(f2.de) + '" min="' + (f2.ds || INFO.today) + '"></div><div class="wd" style="margin:-4px 0 8px 104px">' + wdText(f2.de) + '</div>' + errHtml(errs, '請假迄') +
       (n ? '<div class="daycount">' + esc(u('dayCount').replace('{0}', n)) + '</div>' : '') + '</div>';
+    h += '<div class="card"><h2>' + esc(lbl('假別')) + '</h2><div class="chips">' + INFO.leaveTypes.map((o) => '<button class="chip' + (f2.type === o.v ? ' on' : '') + '" data-l3type="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') + '</div>' + errHtml(errs, '假別') + '</div>';
     h += '<div class="card"><h2>' + esc(lbl('事由')) + '</h2>' + reasonBlock(INFO.reasons) + errHtml(errs, '事由') + '</div>';
   }
   h += '<div class="card"><h2>' + esc(lbl('備註')) + '</h2><div class="chips"><button class="chip' + (!f2.memoOwn ? ' on' : '') + '" data-memo="0">' + esc(INFO.none[0].t) + '</button><button class="chip' + (f2.memoOwn ? ' on' : '') + '" data-memo="1">' + esc(INFO.txt.btn_typeit) + '</button></div>' +
@@ -544,6 +545,7 @@ function bindForm2() {
   on('#o_phone', 'oninput', (e) => { f2.phone = e.target.value; f2.phoneTouched = true; });
   on('#l_ds', 'onchange', (e) => { f2.ds = e.target.value; if (f2.ds && (!f2.de || f2.de < f2.ds)) f2.de = addDays(f2.ds, 2); renderForm2(); }); // 連休至少 3 天：最後一天先帶第 3 天
   on('#l_de', 'onchange', (e) => { f2.de = e.target.value; renderForm2(); });
+  document.querySelectorAll('[data-l3type]').forEach((b) => b.onclick = () => { f2.type = b.dataset.l3type; document.querySelectorAll('[data-l3type]').forEach((x) => x.classList.toggle('on', x === b)); });
   on('#reasonText', 'oninput', (e) => { f2.reason = e.target.value; });
   on('#memoText', 'oninput', (e) => { f2.memo = e.target.value; });
   document.querySelectorAll('[data-r]').forEach((b) => b.onclick = () => { f2.reason = b.dataset.r; f2.own = false; renderForm2(); });
@@ -565,8 +567,9 @@ async function doCheck2() {
   } else {
     if (!f2.ds) e['請假起'] = u('need');
     if (!f2.de) e['請假迄'] = u('need');
+    if (!f2.type) e['假別'] = u('need');
     if (!String(f2.reason).trim()) e['事由'] = u('need');
-    data = { '請假起': f2.ds, '請假迄': f2.de, '事由': f2.reason.trim(), '備註': (f2.memo || '').trim() || '無' };
+    data = { '請假起': f2.ds, '請假迄': f2.de, '假別': f2.type, '事由': f2.reason.trim(), '備註': (f2.memo || '').trim() || '無' };
   }
   if (Object.keys(e).length) return renderForm2(e);
   if (FORM === 'out') { // 手機號碼：第一次填的自動記住；和記住的不同時，問要不要換成新號碼
