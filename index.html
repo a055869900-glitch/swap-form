@@ -115,7 +115,7 @@ const UI = {
     next: '下一步：檢查排休', edit: '✏️ 修改內容', close: '關閉', retry: '重新整理',
     endBefore: '結束時間要晚於開始時間', need: '請填寫這一項',
     sugT: '📅 建議改成這幾天（還有名額）', pickT: '🔁 選擇要對調的同事', unswap: '不對調了，回到一般申請',
-    missing: '還有 {0} 項沒有填好，請補上紅框標示的地方：', agreeT: '🤝 已經和同事講好了嗎？', agreeHint: '已經當面和下面這位同事講好了，選是哪一位就可以直接送出，機器人不會再通知對方。', agreeEx: '🔁 和 {0} 對調（{0} 改休我原本的日期）', agreeSelf: '📅 {0} 會自己把假改到別天', agreedEx: '🤝 已和 {0} 講好：兩人對調休假（不會另外通知對方）', agreedSelf: '🤝 已和 {0} 講好：{0} 會自己把假改到別天（不會另外通知對方）', unagree: '取消，重新選擇', whyRule: '同休', whyFull: '人數已滿',
+    missing: '還有 {0} 項沒有填好，請補上紅框標示的地方：', agreeT: '🤝 已經和同事講好了嗎？', agreeHint: '已經當面和下面的同事講好了：選是哪一位，再幫對方選改休哪一天，就可以直接送出。機器人不會通知對方，核准後兩個人的排休表會一起更新。', agreeEx: '🔁 {0} 改休我原本的日期（{1}）', agreeOther: '📅 或 {0} 改休別天（{1} 天）：', agreeOtherBtn: '確定改休這天起', agreeFrom: '{0} 要改掉的休假：{1}', agreed: '🤝 已和 {0} 講好：{0} 的休假從 {1} 改到 {2}（由你登記，不會另外通知對方）', unagree: '取消，重新選擇', whyRule: '同休', whyFull: '人數已滿',
     forceHint: '選「仍要送出」會交給主管決定是否特准。',
     whyQ: '仍要送出的理由（必填，主管會看到）', whyPh: '例如：家裡有事、已和同事商量好',
     modeSelf: '自己申請', modeProxy: '幫員工登記（當面核准）', target: '員工', targetPh: '請選擇員工',
@@ -135,7 +135,7 @@ const UI = {
     next: 'Lanjut: cek jadwal', edit: '✏️ Ubah isian', close: 'Tutup', retry: 'Muat ulang',
     endBefore: 'Waktu selesai harus setelah waktu mulai', need: 'Mohon isi bagian ini',
     sugT: '📅 Saran tanggal (masih ada kuota)', pickT: '🔁 Pilih rekan untuk bertukar', unswap: 'Batal tukar, kembali ke pengajuan biasa',
-    missing: 'Masih ada {0} bagian yang belum diisi dengan benar, lengkapi kotak merah:', agreeT: '🤝 Sudah sepakat dengan rekan?', agreeHint: 'Jika sudah sepakat langsung dengan rekan di bawah, pilih namanya lalu kirim. Bot tidak akan memberi tahu rekan.', agreeEx: '🔁 Tukar dengan {0} ({0} libur di tanggal lama saya)', agreeSelf: '📅 {0} akan pindah libur sendiri', agreedEx: '🤝 Sudah sepakat dengan {0}: tukar libur (rekan tidak diberi tahu)', agreedSelf: '🤝 Sudah sepakat dengan {0}: {0} pindah libur sendiri (rekan tidak diberi tahu)', unagree: 'Batal, pilih lagi', whyRule: 'libur bersamaan', whyFull: 'kuota penuh',
+    missing: 'Masih ada {0} bagian yang belum diisi dengan benar, lengkapi kotak merah:', agreeT: '🤝 Sudah sepakat dengan rekan?', agreeHint: 'Jika sudah sepakat langsung dengan rekan di bawah: pilih rekannya, lalu pilih hari libur barunya, lalu kirim. Bot tidak memberi tahu rekan; setelah disetujui jadwal keduanya diperbarui.', agreeEx: '🔁 {0} libur di tanggal lama saya ({1})', agreeOther: '📅 Atau {0} libur di hari lain ({1} hari):', agreeOtherBtn: 'Pakai tanggal ini', agreeFrom: 'Libur {0} yang diganti: {1}', agreed: '🤝 Sudah sepakat dengan {0}: libur {0} dari {1} ke {2} (didaftarkan oleh Anda, rekan tidak diberi tahu)', unagree: 'Batal, pilih lagi', whyRule: 'libur bersamaan', whyFull: 'kuota penuh',
     forceHint: 'Jika memilih "Tetap kirim", atasan yang akan memutuskan.',
     whyQ: 'Alasan tetap kirim (wajib, akan dilihat atasan)', whyPh: 'Contoh: urusan keluarga, sudah bicara dengan rekan',
     modeSelf: 'Untuk saya', modeProxy: 'Daftarkan karyawan (disetujui langsung)', target: 'Karyawan', targetPh: 'Pilih karyawan',
@@ -155,7 +155,7 @@ const UI = {
     next: 'Tiếp: kiểm tra lịch', edit: '✏️ Sửa nội dung', close: 'Đóng', retry: 'Tải lại',
     endBefore: 'Giờ kết thúc phải sau giờ bắt đầu', need: 'Vui lòng điền mục này',
     sugT: '📅 Gợi ý ngày (còn chỗ)', pickT: '🔁 Chọn đồng nghiệp để đổi', unswap: 'Không đổi nữa, quay lại đơn thường',
-    missing: 'Còn {0} mục chưa điền đúng, hãy bổ sung các ô viền đỏ:', agreeT: '🤝 Đã thỏa thuận với đồng nghiệp chưa?', agreeHint: 'Nếu đã thỏa thuận trực tiếp với đồng nghiệp bên dưới, chọn tên rồi gửi. Bot sẽ không báo cho đồng nghiệp.', agreeEx: '🔁 Đổi với {0} ({0} nghỉ vào ngày cũ của tôi)', agreeSelf: '📅 {0} sẽ tự đổi ngày nghỉ', agreedEx: '🤝 Đã thỏa thuận với {0}: đổi ngày nghỉ cho nhau (không báo đồng nghiệp)', agreedSelf: '🤝 Đã thỏa thuận với {0}: {0} tự đổi ngày nghỉ (không báo đồng nghiệp)', unagree: 'Hủy, chọn lại', whyRule: 'nghỉ trùng', whyFull: 'đủ người',
+    missing: 'Còn {0} mục chưa điền đúng, hãy bổ sung các ô viền đỏ:', agreeT: '🤝 Đã thỏa thuận với đồng nghiệp chưa?', agreeHint: 'Nếu đã thỏa thuận trực tiếp với đồng nghiệp bên dưới: chọn người đó, rồi chọn ngày nghỉ mới của họ, rồi gửi. Bot không báo đồng nghiệp; sau khi duyệt bảng nghỉ của cả hai được cập nhật.', agreeEx: '🔁 {0} nghỉ vào ngày cũ của tôi ({1})', agreeOther: '📅 Hoặc {0} nghỉ ngày khác ({1} ngày):', agreeOtherBtn: 'Chọn ngày này', agreeFrom: 'Ngày nghỉ của {0} cần đổi: {1}', agreed: '🤝 Đã thỏa thuận với {0}: ngày nghỉ của {0} từ {1} sang {2} (bạn đăng ký, không báo đồng nghiệp)', unagree: 'Hủy, chọn lại', whyRule: 'nghỉ trùng', whyFull: 'đủ người',
     forceHint: 'Chọn "Vẫn gửi" thì quản lý sẽ quyết định.',
     whyQ: 'Lý do vẫn gửi (bắt buộc, quản lý sẽ thấy)', whyPh: 'Ví dụ: việc gia đình, đã bàn với đồng nghiệp',
     modeSelf: 'Cho tôi', modeProxy: 'Đăng ký cho nhân viên (duyệt trực tiếp)', target: 'Nhân viên', targetPh: 'Chọn nhân viên',
@@ -387,7 +387,7 @@ function renderConfirm(v, banner) {
       v.suggestions.map((x) => '<button class="chip" data-shift="' + esc(x.d) + '">' + esc(x.label) + '</button>').join('') + '</div></div>';
   }
   if (v.canSwapW) h += '<button class="btn primary" id="swapwBtn">' + esc(INFO.txt.btn_swapw) + '</button><div id="cands"></div>';
-  if (v.agreed) h = '<div class="banner" style="background:#e8f8ef;color:var(--green)">' + esc(u(v.agreed.mode === 'ex' ? 'agreedEx' : 'agreedSelf').split('{0}').join(v.agreed.n)) + '</div>' + h;
+  if (v.agreed) h = '<div class="banner" style="background:#e8f8ef;color:var(--green)">' + esc(u('agreed').split('{0}').join(v.agreed.n).replace('{1}', v.agreed.from.join('、')).replace('{2}', v.agreed.to.join('、'))) + '</div>' + h;
   if (v.agreeCands && v.agreeCands.length) {
     h += '<div class="card" style="margin-top:12px"><h2>' + esc(u('agreeT')) + '</h2><div style="font-size:13px;color:var(--muted);margin-bottom:8px">' + esc(u('agreeHint')) + '</div><div class="chips">' +
       v.agreeCands.map((x, i) => '<button class="chip" data-ag="' + i + '">' + esc(x.n) + ' <small>（' + esc(x.why.map((w) => w === '同休' ? u('whyRule') : u('whyFull')).join('、')) + '）</small></button>').join('') + '</div><div id="agOpt"></div></div>';
@@ -406,10 +406,23 @@ function renderConfirm(v, banner) {
   document.querySelectorAll('[data-ag]').forEach((b) => b.onclick = () => {
     const x = v.agreeCands[Number(b.dataset.ag)];
     document.querySelectorAll('[data-ag]').forEach((y) => y.classList.toggle('on', y === b));
-    if (!x.ex) return step('agree', { name: x.n, mode: 'self' });
     const box = $('#agOpt');
-    box.innerHTML = '<button class="btn primary" data-agm="ex">' + esc(u('agreeEx').split('{0}').join(x.n)) + '</button><button class="btn ghost" data-agm="self">' + esc(u('agreeSelf').split('{0}').join(x.n)) + '</button>';
-    box.querySelectorAll('[data-agm]').forEach((m) => m.onclick = () => step('agree', { name: x.n, mode: m.dataset.agm }));
+    box.innerHTML = '<div style="font-size:14px;margin:10px 0 6px">' + esc(u('agreeFrom').replace('{0}', x.n).replace('{1}', x.daysMd.join('、'))) + '</div>' +
+      (x.ex ? '<button class="btn primary" id="agOld">' + esc(u('agreeEx').split('{0}').join(x.n).replace('{1}', x.oldMd.join('、'))) + '</button>' : '') +
+      '<div style="font-size:14px;margin:12px 0 6px">' + esc(u('agreeOther').replace('{0}', x.n).replace('{1}', x.days.length)) + '</div>' +
+      '<input type="date" id="agDate" min="' + INFO.today + '" style="width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;min-height:44px">' +
+      '<div class="err" id="agErr"></div><button class="btn ghost" id="agOther">' + esc(u('agreeOtherBtn')) + '</button>';
+    if ($('#agOld')) $('#agOld').onclick = () => step('agree', { name: x.n, mode: 'old' });
+    $('#agOther').onclick = async () => {
+      const d = $('#agDate').value;
+      if (!d) { $('#agErr').textContent = u('need'); return; }
+      busy(u('checking'));
+      try {
+        const r = await api('agree', { name: x.n, mode: 'other', d });
+        if (!r.ok) { if (r.code === 'invalid') { $('#agErr').textContent = r.msg; return; } return fail(r); }
+        renderConfirm(r);
+      } catch (e) { fail(e); } finally { busy(''); }
+    };
     box.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
   document.querySelectorAll('[data-shift]').forEach((b) => b.onclick = () => step('shift', { d: b.dataset.shift }, (r) => {
