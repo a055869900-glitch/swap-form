@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <title>換(改)假／新增假</title>
+<script>
+/* 一打開就依網址（?f=out / ?f=leave3）把標題換成對應表單，不用等登入、讀取完 */
+var PRE_TITLES = {
+  swap: { zh: '換(改)假／新增假', id: 'Tukar/Tambah Libur', vi: 'Đổi/Thêm ngày nghỉ' },
+  out: { zh: '外出登記', id: 'Izin Keluar', vi: 'Đăng ký ra ngoài' },
+  leave3: { zh: '連休三天（請/休假三日以上）', id: 'Cuti 3 Hari atau Lebih', vi: 'Nghỉ phép từ 3 ngày' }
+};
+function preForm() {
+  try {
+    var p = new URLSearchParams(location.search), f = p.get('f');
+    if (!f && p.get('liff.state')) f = new URLSearchParams(decodeURIComponent(p.get('liff.state')).replace(/^[^?]*\?/, '')).get('f');
+    return f === 'out' || f === 'leave3' ? f : 'swap';
+  } catch (e) { return 'swap'; }
+}
+function preLang() { try { var l = localStorage.getItem('liffLang'); return PRE_TITLES.swap[l] ? l : 'zh'; } catch (e) { return 'zh'; } }
+document.title = PRE_TITLES[preForm()][preLang()];
+</script>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
   :root {
@@ -144,7 +161,7 @@ const UI = {
   },
 };
 const DEF_START = '08:00', DEF_END = '17:00';
-let lang = 'zh', INFO = null, VIEW = null;
+let lang = preLang(), INFO = null, VIEW = null;
 let FORM = 'swap'; // 這一頁辦哪一種：swap 換(改)假／out 外出登記／leave3 連休三天（網址 ?f=out、?f=leave3）
 const f2 = { date: '', ts: '', te: '', ds: '', de: '', reason: '', own: false, place: '', phone: '', memo: '無', memoOwn: false };
 const form = { proxyOn: false, target: '', kind: '', oldSD: '', oldST: DEF_START, oldED: '', oldET: DEF_END, newSD: '', newST: DEF_START, newED: '', newET: DEF_END, type: '', reason: '', own: false };
@@ -156,12 +173,13 @@ function center(msg, btn) {
   $('#app').innerHTML = '<div class="center">' + esc(msg) + (btn ? '<button class="btn ghost" id="cBtn">' + esc(btn.t) + '</button>' : '') + '</div>';
   if (btn) $('#cBtn').onclick = btn.f;
 }
-function formTitle() { return INFO && INFO.titles && INFO.titles[FORM] ? INFO.titles[FORM] : u('title'); }
+function formTitle() { return INFO && INFO.titles && INFO.titles[FORM] ? INFO.titles[FORM] : (PRE_TITLES[FORM][lang] || PRE_TITLES[FORM].zh); }
 function header() {
   $('#hTitle').textContent = formTitle();
   $('#hWho').textContent = INFO ? INFO.name + '（' + INFO.group + '）' : ' ';
   document.querySelectorAll('#langs button').forEach((b) => b.classList.toggle('on', b.dataset.l === lang));
   document.title = formTitle();
+  try { localStorage.setItem('liffLang', lang); } catch (e) {}
 }
 
 async function api(action, extra) {
@@ -513,7 +531,7 @@ async function doCheck2() {
   } catch (err) { fail(err); } finally { busy(''); }
 }
 
-header();
+FORM = preForm(); header(); // 一打開就顯示正確的表單標題
 boot();
 </script>
 </body>
