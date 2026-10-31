@@ -56,6 +56,9 @@ document.title = PRE_TITLES[preForm()][preLang()];
   .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 15px; color: var(--ink); min-height: 40px; }
   .chip.on { border-color: var(--blue); background: var(--blue); color: #fff; }
   .err { color: var(--red); font-size: 13px; margin-top: 6px; white-space: pre-line; }
+  .lawhint { margin-top: 10px; background: #EEF6FF; border-left: 4px solid #1E6FD9; border-radius: 8px; padding: 8px 10px; font-size: 14px; line-height: 1.5; color: #123; }
+  .lawhint:empty { display: none; }
+  .lawhint b { color: #1E6FD9; }
   .bad { outline: 2px solid var(--red); }
   .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px; font-size: 17px; font-weight: 700; margin-top: 10px; min-height: 50px; }
   .btn.primary { background: var(--blue); color: #fff; }
@@ -293,7 +296,7 @@ function renderForm(errs) {
     { // 換(改)假、新增假都要選假別
       h += '<div class="card"><h2>' + esc(INFO.labels['假別'] || u('typeQ')) + '</h2><div class="chips">' +
         INFO.leaveTypes.map((o) => '<button class="chip' + (form.type === o.v ? ' on' : '') + '" data-type="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') +
-        '</div>' + errLine(errs, ['假別']) + '</div>';
+        '</div><div class="lawhint" id="lawHint">' + lawHtml([form.type]) + '</div>' + errLine(errs, ['假別']) + '</div>';
     }
     const reasonIsOpt = INFO.reasons.some((o) => o.v === form.reason) && !form.own;
     h += '<div class="card"><h2>' + esc(INFO.labels['事由'] || u('reasonQ')) + '</h2><div class="chips">' +
@@ -328,7 +331,7 @@ function bindForm() {
   document.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { form.proxyOn = b.dataset.mode === '1'; renderForm(); });
   const ts = $('#targetSel'); if (ts) ts.onchange = () => { form.target = ts.value; };
   document.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => { form.kind = b.dataset.kind; renderForm(); });
-  document.querySelectorAll('[data-type]').forEach((b) => b.onclick = () => { form.type = b.dataset.type; document.querySelectorAll('[data-type]').forEach((x) => x.classList.toggle('on', x === b)); });
+  document.querySelectorAll('[data-type]').forEach((b) => b.onclick = () => { form.type = b.dataset.type; document.querySelectorAll('[data-type]').forEach((x) => x.classList.toggle('on', x === b)); const lh = $('#lawHint'); if (lh) lh.innerHTML = lawHtml([form.type]); });
   document.querySelectorAll('[data-reason]').forEach((b) => b.onclick = () => { form.reason = b.dataset.reason; form.own = false; renderForm(); });
   const own = document.querySelector('[data-own]');
   if (own) own.onclick = () => { if (!form.own) { form.own = true; form.reason = ''; } renderForm(); setTimeout(() => $('#ownReason') && $('#ownReason').focus(), 50); };
@@ -342,6 +345,14 @@ function bindForm() {
   const nb = $('#nextBtn'); if (nb) nb.onclick = doCheck;
 }
 function dt(d, t) { return d && t ? d.replace(/-/g, '/') + ' ' + t : ''; }
+// 選了哪幾種假，就顯示那幾種假的法定天數（重複的只顯示一次）
+function lawHtml(types) {
+  const seen = {};
+  return (types || []).filter((t) => t && !seen[t] && (seen[t] = 1)).map((t) => {
+    const o = INFO.leaveTypes.filter((x) => x.v === t)[0];
+    return o && o.law ? '<div>📘 <b>' + esc(o.t) + '</b>：' + esc(o.law) + '</div>' : '';
+  }).join('');
+}
 function localErrors() {
   const e = {}, isAdd = form.kind === '新增假';
   if (form.proxyOn && !form.target) e['target'] = u('need');
@@ -536,7 +547,7 @@ function renderForm2(errs) {
     const allSame = days.length && days.every((d) => f2.types[d] && f2.types[d] === f2.types[days[0]]) ? f2.types[days[0]] : '';
     h += '<div class="card"><h2>' + esc(lbl('假別')) + '</h2><div style="font-size:13px;color:var(--muted);margin-bottom:6px">' + esc(u('typeAll')) + '</div><div class="chips">' + INFO.leaveTypes.map((o) => '<button class="chip' + (allSame === o.v ? ' on' : '') + '" data-l3type="' + esc(o.v) + '">' + esc(o.t) + '</button>').join('') + '</div>' +
       (days.length ? '<div style="font-size:13px;color:var(--muted);margin:12px 0 6px">' + esc(u('typeEach')) + '</div>' + days.map((d) => '<div class="row" style="grid-template-columns:110px 1fr"><label>' + esc(d.slice(5).replace('-', '/') + wdText(d)) + '</label><select data-dtype="' + d + '" style="width:100%;font:inherit;font-size:16px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff;min-height:44px' + (f2.types[d] ? '' : ';border-color:var(--red)') + '"><option value="">' + esc(u('typePick')) + '</option>' + INFO.leaveTypes.map((o) => '<option value="' + esc(o.v) + '"' + (f2.types[d] === o.v ? ' selected' : '') + '>' + esc(o.t) + '</option>').join('') + '</select></div>').join('') : '') +
-      errHtml(errs, '假別') + '</div>';
+      '<div class="lawhint">' + lawHtml(days.map((d) => f2.types[d])) + '</div>' + errHtml(errs, '假別') + '</div>';
     h += '<div class="card"><h2>' + esc(lbl('事由')) + '</h2>' + reasonBlock(INFO.reasons) + errHtml(errs, '事由') + '</div>';
   }
   h += '<div class="card"><h2>' + esc(lbl('備註')) + '</h2><div class="chips"><button class="chip' + (!f2.memoOwn ? ' on' : '') + '" data-memo="0">' + esc(INFO.none[0].t) + '</button><button class="chip' + (f2.memoOwn ? ' on' : '') + '" data-memo="1">' + esc(INFO.txt.btn_typeit) + '</button></div>' +
