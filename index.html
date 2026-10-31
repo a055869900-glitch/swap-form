@@ -73,6 +73,8 @@ document.title = PRE_TITLES[preForm()][preLang()];
   .lines div:first-child { border-top: 0; }
   .lines div.warnline { display: flex; gap: 8px; align-items: flex-start; color: var(--red); font-weight: 700; font-size: 15px; background: var(--red-soft); border: 0; border-left: 5px solid var(--red); border-radius: 8px; padding: 10px; margin: 6px 0; }
   .warnline .ico { font-size: 20px; line-height: 1.2; flex: none; }
+  .lines div.noteline { display: flex; gap: 8px; align-items: flex-start; color: #6B4A00; font-weight: 700; font-size: 15px; background: #FFF3C4; border: 0; border-left: 5px solid #F2B200; border-radius: 8px; padding: 10px; margin: 6px 0; }
+  .noteline .ico { font-size: 20px; line-height: 1.2; flex: none; }
   .daycount { font-size: 14px; color: var(--blue); font-weight: 700; margin-top: 4px; }
   input[type=text], input[type=tel] { width: 100%; font: inherit; font-size: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); min-height: 44px; }
   .missing { display: flex; gap: 8px; align-items: flex-start; color: var(--red); font-weight: 700; font-size: 15px; background: var(--red-soft); border-left: 5px solid var(--red); border-radius: 8px; padding: 10px; margin-bottom: 12px; white-space: pre-line; }
@@ -394,6 +396,7 @@ function renderConfirm(v, banner) {
   if (v.lines && v.lines.length) {
     h += '<div class="card lines">' + v.lines.map((x) => isWarn(x.c)
       ? '<div class="warnline"><span class="ico">⚠️</span><span>' + esc(String(x.t).replace(/^⚠\uFE0F?\s*/, '')) + '</span></div>'
+      : isNote(x.c) ? '<div class="noteline"><span class="ico">📝</span><span>' + esc(String(x.t).replace(/^📝\s*/, '')) + '</span></div>'
       : '<div style="color:' + esc(x.c) + '">' + esc(x.t) + '</div>').join('') + '</div>';
   }
   if (v.canSubmit) h += '<button class="btn ok" id="sendBtn">' + esc(v.proxy ? u('proxySend') : INFO.txt.btn_confirm) + '</button>';
@@ -496,6 +499,7 @@ function renderDone(msg) {
 
 /* ===== 外出登記、連休三天 ===== */
 function isWarn(c) { return /^#(e60012|c0392b)$/i.test(String(c || '')); }
+function isNote(c) { return /^#b86a00$/i.test(String(c || '')); } // 黃色提醒（例如年假假卡），不擋送出
 function pad2(n) { return ('0' + n).slice(-2); }
 function ymd(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
 function addDays(s, n) { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); }
